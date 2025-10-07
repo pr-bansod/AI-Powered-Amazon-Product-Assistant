@@ -1,0 +1,27 @@
+## Problem Statement 📋
+
+### Core Challenge
+Aurimas's global distribution network possesses extensive product inventory (represented by Amazon dataset), but customers face significant challenges in discovering, evaluating, and purchasing products efficiently. Current gaps include:
+
+- **Information Overload**: Customers struggle to navigate thousands of products without intelligent filtering
+- **Time-Consuming Research**: Manual review reading and product comparison takes hours
+- **Limited Accessibility**: No 24/7 personalized shopping assistance available
+- **Complex Queries**: Multi-criteria searches (budget + features + reviews) are difficult
+- **Geographic Disconnect**: Future: No awareness of product availability by location
+
+### Impact of Current Gaps
+- Lost sales due to poor product discovery
+- High customer support costs
+- Lower customer satisfaction and engagement
+- Inability to scale personalized service
+- Competitive disadvantage against AI-enabled retailers
+
+### Why AI Solution
+An AI-powered chatbot leveraging RAG and agentic workflows can provide instant, personalized, context-aware shopping assistance at scale, transforming the customer experience while reducing operational costs.
+
+### Primary Objectives
+- Enable natural language product discovery and information retrieval
+- Reduce time-to-purchase by providing instant, accurate product information
+- Increase customer satisfaction through personalized shopping experiences
+- Scale customer service capabilities without proportional staff increases
+- Leverage existing Amazon product data (descriptions, reviews) as knowledge base

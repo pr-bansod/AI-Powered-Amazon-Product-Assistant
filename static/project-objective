@@ -1,7 +1,7 @@
 ## Problem Statement 📋
 
 ### Core Challenge
-Aurimas's global distribution network possesses extensive product inventory (represented by Amazon dataset), but customers face significant challenges in discovering, evaluating, and purchasing products efficiently. Current gaps include:
+Amazon's global distribution network possesses extensive product inventory (represented by Amazon dataset), but customers face significant challenges in discovering, evaluating, and purchasing products efficiently. Current gaps include:
 
 - **Information Overload**: Customers struggle to navigate thousands of products without intelligent filtering
 - **Time-Consuming Research**: Manual review reading and product comparison takes hours

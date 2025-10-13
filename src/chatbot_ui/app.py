@@ -1,48 +1,6 @@
-import streamlit as st
 import requests
-
+import streamlit as st
 from core.config import config
-
-## Lets create a sidebar with a dropdown for the model list and providers
-with st.sidebar:
-    st.title("Settings")
-
-    #Dropdown for model
-    provider = st.selectbox("Provider", ["OpenAI", "Groq", "Google"])
-    if provider == "OpenAI":
-        model_name = st.selectbox("Model", ["gpt-4o-mini", "gpt-4o"])
-    elif provider == "Groq":
-        model_name = st.selectbox("Model", ["llama-3.3-70b-versatile"])
-    else:
-        model_name = st.selectbox("Model", ["gemini-2.0-flash"])
-
-    st.divider()
-
-    # Temperature slider
-    temperature = st.slider(
-        "Temperature",
-        min_value=0.0,
-        max_value=2.0,
-        value=0.7,
-        step=0.1,
-        help="Controls randomness in responses. Lower values make output more focused and deterministic, higher values make it more creative."
-    )
-
-    # Max tokens configuration
-    max_tokens = st.number_input(
-        "Max Tokens",
-        min_value=100,
-        max_value=4000,
-        value=1000,
-        step=100,
-        help="Maximum length of generated responses. Higher values allow longer responses but may increase cost."
-    )
-
-    # Save provider and model to session state
-    st.session_state.provider = provider
-    st.session_state.model_name = model_name
-    st.session_state.temperature = temperature
-    st.session_state.max_tokens = max_tokens
 
 
 def api_call(method, url, **kwargs):
@@ -91,14 +49,8 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        output = api_call("post", f"{config.API_URL}/chat", json={
-            "provider": st.session_state.provider,
-            "model_name": st.session_state.model_name,
-            "messages": st.session_state.messages,
-            "temperature": st.session_state.temperature,
-            "max_tokens": st.session_state.max_tokens
-        })
+        output = api_call("post", f"{config.API_URL}/rag", json={"query": prompt})
         response_data = output[1]
-        answer = response_data["message"]
+        answer = response_data["answer"]
         st.write(answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})

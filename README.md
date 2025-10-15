@@ -19,7 +19,7 @@ This project transforms traditional e-commerce search into an interactive, AI-dr
 - **Phase 3** (Oct 20-26): 🚧 **CURRENT** - Agents & agentic systems
 - **Phase 4** (Oct 27 - Nov 2): 📋 Agentic RAG integration
 - **Phase 5** (Nov 3-9): 📋 Multi-agent systems
-- **Phase 6** (Nov 10-16): 📋 Deployment, optimization & reliability
+- **Phase 6** (Nov 10-16): 📋 Deployment(CI/CD), optimization & reliability
 - **Final Polish** (Nov 17-23): 🎯 Final integration & documentation
 
 **🏁 Project Completion: November 23, 2024**

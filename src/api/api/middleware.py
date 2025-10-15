@@ -1,10 +1,11 @@
-import logging
-import uuid
-
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+import uuid
+import logging
+
 
 logger = logging.getLogger(__name__)
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Middleware that adds a unique request ID to each request."""

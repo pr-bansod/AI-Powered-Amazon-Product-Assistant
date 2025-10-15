@@ -8,3 +8,32 @@ clean-notebook-outputs:
 run-evals-retriever:
 	uv sync
 	PYTHONPATH=${PWD}/src:$$PYTHONPATH:${PWD} uv run --env-file .env python -m evals.eval_retriever
+
+# Testing commands
+test:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest
+
+test-unit:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m unit
+
+test-integration:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m integration
+
+test-coverage:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest --cov=src --cov-report=html --cov-report=term-missing
+
+test-verbose:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -vv
+
+test-watch:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest-watch
+
+test-no-api:
+	uv sync
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m "not requires_api"

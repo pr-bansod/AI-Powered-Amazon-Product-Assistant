@@ -17,6 +17,8 @@ dependencies = [
     "uvicorn>=0.37.0",
     "matplotlib>=3.9.0",
     "qdrant-client>=1.15.1",
+    "langsmith>=0.4.34",
+    "langgraph>=0.6.10",
 ]
 
 [dependency-groups]
@@ -39,13 +41,7 @@ dev = [
     "types-sqlalchemy>=1.4.53.38",
 ]
 
-[tool.ruff]
-line-length = 130
-exclude = ["notebooks/**", ".venv/**"]
-src = ["src", "tests"]
-lint.select = [
-  "I",
-]
+
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

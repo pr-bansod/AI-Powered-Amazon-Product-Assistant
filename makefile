@@ -12,28 +12,28 @@ run-evals-retriever:
 # Testing commands
 test:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest
 
 test-unit:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m unit
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest -m unit
 
 test-integration:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m integration
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest -m integration
 
 test-coverage:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest --cov=src --cov-report=html --cov-report=term-missing
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest --cov=src --cov-report=html --cov-report=term-missing
 
 test-verbose:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -vv
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest -vv
 
 test-watch:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest-watch
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest-watch
 
 test-no-api:
 	uv sync
-	PYTHONPATH=${PWD}/src:$$PYTHONPATH pytest -m "not requires_api"
+	PYTHONPATH=${PWD}/src:$$PYTHONPATH uv run pytest -m "not requires_api"

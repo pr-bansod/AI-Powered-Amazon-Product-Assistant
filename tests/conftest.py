@@ -68,8 +68,15 @@ def mock_qdrant_query_results():
 @pytest.fixture
 def mock_instructor_response():
     """Mock Instructor/LLM response"""
-    from api.api.models import RAGUsedContext
-    from api.rag.retrieval_generation import RAGGenerationResponseWithReferences
+    from pydantic import BaseModel, Field
+
+    class RAGUsedContext(BaseModel):
+        id: str = Field(description="ID of the item used to answer the question.")
+        description: str = Field(description="Short description of the item used to answer the question.")
+
+    class RAGGenerationResponseWithReferences(BaseModel):
+        answer: str = Field(description="Answer to the question.")
+        references: list[RAGUsedContext] = Field(description="List of items used to answer the question.")
 
     return RAGGenerationResponseWithReferences(
         answer="This is a test answer about the products.",

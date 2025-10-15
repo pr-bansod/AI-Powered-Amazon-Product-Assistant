@@ -1,8 +1,12 @@
 import openai
-from openai.types.responses import response
 from qdrant_client import QdrantClient 
+from langsmith import traceable
 
 
+@traceable(
+    name="embed-query",
+    run_type="embedding"
+)
 def get_embedding(text, model="text-embedding-3-small"):
     """
     Generate embeddings for the given text using OpenAI's embedding model.
@@ -32,7 +36,10 @@ def get_embedding(text, model="text-embedding-3-small"):
     )
     return response.data[0].embedding
 
-
+@traceable(
+    name="retrieve-data",
+    run_type="retriever"
+)
 def retrieve_data(query, qdrant_client, k=5):
     """
     Retrieve relevant product data from Qdrant vector database based on semantic similarity.
@@ -82,6 +89,10 @@ def retrieve_data(query, qdrant_client, k=5):
     }
 
 
+@traceable(
+    name="format-retrieved-context",
+    run_type="prompt"
+)
 def process_context(context):
     """
     Format retrieved product data into a structured string for the LLM prompt.
@@ -116,6 +127,10 @@ def process_context(context):
     return formatted_context
 
 
+@traceable(
+    name="build-prompt",
+    run_type="prompt"
+)
 def build_prompt(preprocessed_context, question):
     """
     Construct a prompt for the LLM that includes product context and user question.
@@ -156,6 +171,10 @@ Question:
     return prompt
 
 
+@traceable(
+    name="generate-answer",
+    run_type="llm"
+)
 def generate_answer(prompt):
     """
     Generate a natural language answer using OpenAI's chat completion API.
@@ -190,7 +209,9 @@ def generate_answer(prompt):
     )
     return response.choices[0].message.content
     
-
+@traceable(
+    name="rag-pipeline"
+)
 def rag_pipeline(question, top_k=5):
     """
     Complete RAG (Retrieval-Augmented Generation) pipeline for answering questions about products.

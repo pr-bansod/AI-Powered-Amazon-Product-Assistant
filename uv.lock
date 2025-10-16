@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "00-ai-engineering-bootcamp-cohort-2"
+name = "amazon-product-assistant"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -1,5 +1,5 @@
 [project]
-name = "00-ai-engineering-bootcamp-cohort-2"
+name = "amazon-product-assistant"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"

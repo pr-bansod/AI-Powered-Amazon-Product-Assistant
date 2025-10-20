@@ -30,4 +30,4 @@ services:
       - 6334:6334
     volumes:
       - ./qdrant_storage:/qdrant/storage:z
-    restart: unless-stopped  
+    restart: unless-stopped 

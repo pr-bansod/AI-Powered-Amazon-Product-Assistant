@@ -1,8 +1,14 @@
 import openai
-from openai.types.responses import response
+from openai.types.shared import responses_model
 from qdrant_client import QdrantClient 
+from langsmith import traceable, get_current_run_tree
 
 
+@traceable(
+    name="embed-query",
+    run_type="embedding",
+    metadata={"ls_provider":"openai", "ls_model_name":"text-embedding-3-small"}
+)
 def get_embedding(text, model="text-embedding-3-small"):
     """
     Generate embeddings for the given text using OpenAI's embedding model.
@@ -30,9 +36,19 @@ def get_embedding(text, model="text-embedding-3-small"):
         input=text,
         model=model
     )
+    # to print llm usage on langsmit UI
+    current_run = get_current_run_tree()
+    if current_run:
+        current_run.metadata["usage_metadata"] = {
+            "input_tokens":response.usage.prompt_tokens,
+            "total_tokens": response.usage.total_tokens 
+        }
     return response.data[0].embedding
 
-
+@traceable(
+    name="retrieve-data",
+    run_type="retriever"
+)
 def retrieve_data(query, qdrant_client, k=5):
     """
     Retrieve relevant product data from Qdrant vector database based on semantic similarity.
@@ -82,6 +98,10 @@ def retrieve_data(query, qdrant_client, k=5):
     }
 
 
+@traceable(
+    name="format-retrieved-context",
+    run_type="prompt"
+)
 def process_context(context):
     """
     Format retrieved product data into a structured string for the LLM prompt.
@@ -116,6 +136,10 @@ def process_context(context):
     return formatted_context
 
 
+@traceable(
+    name="build-prompt",
+    run_type="prompt"
+)
 def build_prompt(preprocessed_context, question):
     """
     Construct a prompt for the LLM that includes product context and user question.
@@ -156,6 +180,11 @@ Question:
     return prompt
 
 
+@traceable(
+    name="generate-answer",
+    run_type="llm",
+    metadata={"ls_provider":"openai", "ls_model_name":"gpt-4o-mini"}
+)
 def generate_answer(prompt):
     """
     Generate a natural language answer using OpenAI's chat completion API.
@@ -188,9 +217,19 @@ def generate_answer(prompt):
         messages=[{"role": "system", "content": prompt}],
         temperature=0.5,
     )
+
+    current_run = get_current_run_tree()
+    if current_run:
+        current_run.metadata["usage_metadata"] = {
+            "input_tokens":response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+            "total_tokens": response.usage.total_tokens 
+        }
     return response.choices[0].message.content
     
-
+@traceable(
+    name="rag-pipeline"
+)
 def rag_pipeline(question, top_k=5):
     """
     Complete RAG (Retrieval-Augmented Generation) pipeline for answering questions about products.
@@ -217,7 +256,16 @@ def rag_pipeline(question, top_k=5):
     processed_context = process_context(retrieved_context)
     prompt = build_prompt(processed_context, question)
     answer = generate_answer(prompt)
+
+    final_result = {
+
+        "answer" : answer,
+        "question":question,
+        "retrieved_context_ids": retrieved_context["retrieved_context_ids"],
+        "retrieved_context": retrieved_context["retrieved_context"],
+        "similarity_scores": retrieved_context["similarity_scores"]
+    } 
     
-    return answer 
+    return final_result 
    
 

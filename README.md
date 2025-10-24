@@ -37,52 +37,91 @@ This project transforms traditional e-commerce search into an interactive, AI-dr
 
 ## Architecture
 
-The system follows a microservices architecture with three containerized components:
+The system follows a microservices architecture with three containerized components orchestrated through Docker Compose.
 
+> 📖 **Detailed Documentation**: For comprehensive system design, component interactions, data flows, and deployment architecture, see [ARCHITECTURE.md](documentation/ARCHITECTURE.md)
+>
+> ⚡ **Evolution Notice**: This architecture will evolve as the project progresses through phases 3-6, incorporating agentic systems, multi-agent patterns, and production deployment optimizations (target completion: November 23, 2024).
+
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Frontend"
+        UI[Streamlit UI<br>Port 8501]
+    end
+    
+    subgraph "Backend"
+        API[FastAPI Backend<br>Port 8000]
+    end
+    
+    subgraph "Data Layer"
+        QDRANT[Qdrant Vector DB<br>Ports 6333/6334]
+    end
+    
+    UI --> |HTTP POST /rag| API
+    API --> |Hybrid Search| QDRANT
+    API --> |Tracing Data| LANGSMITH[LangSmith Platform]
+    
+    style UI fill:#4B9CD3,stroke:#333
+    style API fill:#4CAF50,stroke:#333
+    style QDRANT fill:#FF9800,stroke:#333
+    style LANGSMITH fill:#9C27B0,stroke:#333
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          Docker Compose                               │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌─────────────────────┐                                              │
-│  │   Streamlit UI      │                                              │
-│  │   (Port 8501)       │                                              │
-│  │                     │                                              │
-│  │ - Chat Interface    │                                              │
-│  │ - Product Sidebar   │                                              │
-│  │ - Session State     │                                              │
-│  └──────────┬──────────┘                                              │
-│             │                                                          │
-│             │ HTTP POST /rag                                           │
-│             │ {"query": "..."}                                         │
-│             ▼                                                          │
-│  ┌─────────────────────┐                                              │
-│  │   FastAPI Backend   │         ┌──────────────────────┐             │
-│  │   (Port 8000)       │         │  LangSmith Platform  │             │
-│  │                     │◄────────┤  (Observability)     │             │
-│  │ - /rag endpoint     │ @traceable                      │             │
-│  │ - RAG Pipeline      │         └──────────────────────┘             │
-│  │ - Pydantic Models   │                                              │
-│  └──────────┬──────────┘                                              │
-│             │                                                          │
-│             │ Hybrid Search Query                                      │
-│             │ (Vector + BM25)                                          │
-│             ▼                                                          │
-│  ┌─────────────────────┐                                              │
-│  │  Qdrant Vector DB   │                                              │
-│  │  (Ports 6333/6334)  │                                              │
-│  │                     │                                              │
-│  │ - Collection:       │                                              │
-│  │   Amazon-items-     │                                              │
-│  │   collection-01-    │                                              │
-│  │   hybrid-search     │                                              │
-│  │                     │                                              │
-│  │ - Semantic Index    │                                              │
-│  │ - BM25 Index        │                                              │
-│  │ - RRF Fusion        │                                              │
-│  └─────────────────────┘                                              │
-│                                                                        │
-└──────────────────────────────────────────────────────────────────────┘
+
+### Component Dependencies
+
+```mermaid
+graph TD
+    A[Streamlit UI] --> |HTTP| B[FastAPI Backend]
+    B --> |gRPC| C[Qdrant Vector DB]
+    B --> |API Calls| D[OpenAI Services]
+    B --> |Tracing| E[LangSmith]
+    C --> |Persistent Storage| F[qdrant_storage/]
+    B --> |Configuration| G[.env file]
+    A --> |Configuration| G
+    
+    style A fill:#4B9CD3,stroke:#34495E
+    style B fill:#27AE60,stroke:#34495E
+    style C fill:#9B59B6,stroke:#34495E
+    style D fill:#E74C3C,stroke:#34495E
+    style E fill:#F39C12,stroke:#34495E
+    style F fill:#34495E,stroke:#34495E
+    style G fill:#34495E,stroke:#34495E
+```
+
+### Technology Stack
+
+```mermaid
+graph LR
+    A[Python 3.12+] --> B[FastAPI]
+    A --> C[Streamlit]
+    B --> D[Instructor]
+    D --> E[Pydantic]
+    B --> F[Qdrant Client]
+    B --> G[OpenAI SDK]
+    H[Docker] --> I[Docker Compose]
+    I --> J[Qdrant Container]
+    I --> K[FastAPI Container]
+    I --> L[Streamlit Container]
+    M[LangSmith] --> N[Tracing]
+    M --> O[Evaluation]
+    
+    style A fill:#FFD700,stroke:#333
+    style B fill:#4CAF50,stroke:#333
+    style C fill:#4B9CD3,stroke:#333
+    style D fill:#9C27B0,stroke:#333
+    style E fill:#9C27B0,stroke:#333
+    style F fill:#FF9800,stroke:#333
+    style G fill:#1976D2,stroke:#333
+    style H fill:#2196F3,stroke:#333
+    style I fill:#2196F3,stroke:#333
+    style J fill:#FF9800,stroke:#333
+    style K fill:#4CAF50,stroke:#333
+    style L fill:#4B9CD3,stroke:#333
+    style M fill:#673AB7,stroke:#333
+    style N fill:#673AB7,stroke:#333
+    style O fill:#673AB7,stroke:#333
 ```
 
 ### Component Details
@@ -203,6 +242,34 @@ The RAG system processes Amazon Electronics data through the following stages:
 5. **Retrieval**: Hybrid search (20 semantic + 20 BM25) → RRF fusion → top-k results
 6. **Generation**: Structured outputs via Instructor with product references
 
+> 📖 **Pipeline Details**: For in-depth technical documentation on the RAG pipeline, hybrid search implementation, and data flow diagrams, see [ARCHITECTURE.md](documentation/ARCHITECTURE.md#3-rag-pipeline-implementation)
+
+### Hybrid Search Architecture
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+    participant Qdrant
+    participant OpenAI
+    
+    User->>Frontend: Submit query
+    Frontend->>Backend: POST /rag {query}
+    Backend->>OpenAI: get_embedding(query)
+    OpenAI-->>Backend: 1536-dim vector
+    Backend->>Qdrant: Hybrid Search
+    Qdrant->>Qdrant: Semantic Search (vector)
+    Qdrant->>Qdrant: Keyword Search (BM25)
+    Qdrant->>Qdrant: RRF Fusion
+    Qdrant-->>Backend: Top 5 products
+    Backend->>OpenAI: generate_answer(context + query)
+    OpenAI-->>Backend: Structured response
+    Backend->>Backend: Enrich with images/prices
+    Backend-->>Frontend: {answer, used_context}
+    Frontend-->>User: Display results + sidebar
+```
+
 ## RAG Pipeline Flow
 
 Located in `src/api/rag/retrieval_generation.py`:
@@ -292,6 +359,8 @@ AI-Powered-Amazon-Product-Assistant/
 │   └── phase_3/                     # Structured outputs, hybrid search, reranking
 ├── evals/
 │   └── eval_retriever.py            # RAGAS evaluation script
+├── documentation/
+│   └── ARCHITECTURE.md              # Detailed system architecture documentation
 ├── data/                            # Amazon product datasets (JSONL)
 ├── qdrant_storage/                  # Persistent vector DB storage
 ├── docker-compose.yml               # Service orchestration
@@ -481,6 +550,19 @@ docker compose logs -f api
 ## Contributing
 
 This is a personal portfolio project, but feedback and suggestions are welcome! Feel free to open issues or reach out with ideas.
+
+## Documentation
+
+- **[ARCHITECTURE.md](documentation/ARCHITECTURE.md)**: Comprehensive technical documentation covering:
+  - System architecture and component interactions
+  - RAG pipeline implementation details
+  - Data flow diagrams
+  - External dependencies (OpenAI, LangSmith, Qdrant)
+  - Security architecture and threat model
+  - Observability and monitoring setup
+  - Evaluation framework and testing approach
+  - Development workflow and debugging techniques
+  - Production deployment considerations
 
 ## License
 

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "ask": [
+      "Read(!/Users/prash/Documents/AI-Powered-Amazon-Product-Assistant/**)",
+      "Edit(!/Users/prash/Documents/AI-Powered-Amazon-Product-Assistant/**)"
+    ],
+    "allow": [
+      "Read(/Users/prash/Documents/AI-Powered-Amazon-Product-Assistant/**)",
+      "Edit(/Users/prash/Documents/AI-Powered-Amazon-Product-Assistant/**)"
+    ]
+  },
+  "memoryImport": {},
+  "monitoring": {}
+}

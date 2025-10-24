@@ -814,7 +814,7 @@ metadata:
   name: Retrieval Generation Prompt
   version: 1.0.0
   description: Retrieval generation prompt for RAG pipeline
-  author: Aurimas Griciunas
+  author: Prashant Bansod
 
 prompts:
   retrieval_generation: |

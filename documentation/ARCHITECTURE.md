@@ -543,90 +543,130 @@ export LANGCHAIN_PROJECT=amazon-product-assistant
 
 ### 5.1 End-to-End Request Flow
 
-```
-┌──────────┐  1. User Query      ┌────────────┐  2. POST /rag         ┌─────────┐
-│          │ "Find headphones"   │            │  {query: "..."}       │         │
-│ Streamlit├────────────────────▶│  FastAPI   ├──────────────────────▶│  Qdrant │
-│    UI    │                     │   Backend  │◀──────────────────────┤  Vector │
-│          │◀────────────────────┤            │  3. Hybrid Search     │   DB    │
-└──────────┘  6. Display Answer  └─────┬──────┘     Results          └─────────┘
-                + Products              │
-                                        │ 4. Call OpenAI API
-                                        ▼
-                                   ┌─────────┐
-                                   │ OpenAI  │
-                                   │   API   │
-                                   └─────┬───┘
-                                         │ 5. Structured Response
-                                         ▼
-                                   (Instructor + Pydantic)
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Streamlit UI<br/>(Port 8501)
+    participant API as FastAPI Backend<br/>(Port 8000)
+    participant Qdrant as Qdrant Vector DB<br/>(Ports 6333/6334)
+    participant OpenAI as OpenAI API
+    participant LangSmith as LangSmith Platform
+    
+    User->>UI: 1. Enter query<br/>"Find wireless headphones"
+    activate UI
+    UI->>API: 2. POST /rag<br/>{"query": "Find wireless headphones"}
+    activate API
+    
+    API->>LangSmith: Start trace (root span)
+    
+    API->>OpenAI: 3a. Generate embedding<br/>text-embedding-3-small
+    activate OpenAI
+    OpenAI-->>API: 1536-dim vector
+    deactivate OpenAI
+    API->>LangSmith: Log embedding span
+    
+    API->>Qdrant: 3b. Hybrid search<br/>(semantic + BM25 + RRF)
+    activate Qdrant
+    Qdrant-->>API: Top 5 products<br/>(IDs, descriptions, ratings)
+    deactivate Qdrant
+    API->>LangSmith: Log retrieval span
+    
+    API->>API: 4a. Format context<br/>(ID, rating, description)
+    API->>API: 4b. Build prompt<br/>(YAML template + context)
+    API->>LangSmith: Log prompt spans
+    
+    API->>OpenAI: 5. Generate answer<br/>GPT-4.1-mini + Instructor
+    activate OpenAI
+    OpenAI-->>API: Structured response<br/>(Pydantic validated)
+    deactivate OpenAI
+    API->>LangSmith: Log generation span + tokens
+    
+    API->>Qdrant: 6. Fetch enrichment data<br/>(images, prices)
+    activate Qdrant
+    Qdrant-->>API: Product metadata
+    deactivate Qdrant
+    
+    API->>LangSmith: Close trace (calculate cost/latency)
+    
+    API-->>UI: 7. Response<br/>{answer, used_context[]}
+    deactivate API
+    
+    UI->>UI: 8a. Display answer in chat
+    UI->>UI: 8b. Update sidebar with products
+    UI-->>User: 9. Show results + product cards
+    deactivate UI
 ```
 
-**Step-by-Step:**
-1. User types query in Streamlit chat input
-2. Streamlit sends `POST http://api:8000/rag` with `{"query": "Find headphones"}`
-3. FastAPI calls `rag_pipeline_wrapper()`:
-   - Embeds query via OpenAI
-   - Retrieves top-k products from Qdrant (hybrid search)
-   - Formats context
-   - Builds prompt from YAML template
-   - Generates answer via OpenAI + Instructor
-   - Enriches response with images/prices
-4. Returns `{"request_id": "...", "answer": "...", "used_context": [...]}`
-5. Streamlit displays answer in chat
-6. Streamlit updates sidebar with product images/prices
+**Key Steps:**
+1. **User Input**: Query entered in Streamlit chat interface
+2. **API Request**: HTTP POST to FastAPI `/rag` endpoint
+3. **Embedding + Retrieval**: Generate query vector → hybrid search in Qdrant
+4. **Context Preparation**: Format results → build prompt from YAML template
+5. **Answer Generation**: GPT-4.1-mini generates structured response via Instructor
+6. **Enrichment**: Fetch product images and prices for UI display
+7. **Response**: Return answer + product context to frontend
+8. **UI Update**: Display conversational answer + product sidebar
+9. **User View**: See results with images, prices, descriptions
+
+**Observability**: All steps traced in LangSmith with latency, cost, and I/O logging.
 
 ### 5.2 Hybrid Search Data Flow
 
-```
-User Query: "wireless headphones"
-        │
-        ├─────────────────┬─────────────────┐
-        ▼                 ▼                 ▼
- ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
- │  OpenAI API  │  │              │  │              │
- │  Embedding   │  │              │  │              │
- └──────┬───────┘  │              │  │              │
-        │          │              │  │              │
-        ▼          ▼              ▼  ▼              │
- ┌────────────────────────────────────────────────┐ │
- │            Qdrant Query Engine                 │ │
- │  ┌──────────────────┐  ┌──────────────────┐   │ │
- │  │ Semantic Search  │  │  BM25 Search     │   │ │
- │  │ (Vector Index)   │  │  (Sparse Index)  │   │ │
- │  │                  │  │                  │   │ │
- │  │ Top 20 by        │  │ Top 20 by        │   │ │
- │  │ cosine similarity│  │ keyword match    │   │ │
- │  └────────┬─────────┘  └────────┬─────────┘   │ │
- │           │                     │             │ │
- │           └──────────┬──────────┘             │ │
- │                      ▼                        │ │
- │              ┌───────────────┐                │ │
- │              │  RRF Fusion   │                │ │
- │              │  (Re-ranking) │                │ │
- │              └───────┬───────┘                │ │
- └──────────────────────┼────────────────────────┘ │
-                        ▼                          │
-                  Top-k Results ──────────────────┘
-                  (Default: 5)
-```
-
-**RRF Score Calculation:**
-
-For each product `p`:
-```
-RRF_score(p) = 1/(60 + semantic_rank(p)) + 1/(60 + bm25_rank(p))
+```mermaid
+flowchart TD
+    A["User Query: 'wireless headphones'"] --> B[Generate Embedding]
+    
+    B --> C[OpenAI API<br/>text-embedding-3-small]
+    C --> D["1536-dim vector<br/>[0.123, -0.456, ...]"]    
+    D --> E[Qdrant Query Engine]
+    
+    A --> F[Extract Keywords]
+    F --> E
+    
+    E --> G[Parallel Search]
+    
+    G --> H[Semantic Search<br/>Vector Index]
+    G --> I[BM25 Search<br/>Sparse Index]
+    
+    H --> J["Top 20 Results<br/>(by cosine similarity)"]
+    I --> K["Top 20 Results<br/>(by keyword match)"]
+    
+    J --> L[RRF Fusion Algorithm]
+    K --> L
+    
+    L --> M["Calculate RRF Scores<br/>Score = 1/(60+rank₁) + 1/(60+rank₂)"]
+    M --> N["Re-rank by RRF Score<br/>(highest first)"]
+    N --> O["Return Top-k Results<br/>(default: k=5)"]
+    
+    O --> P["Product Results<br/>{IDs, descriptions, ratings, scores}"]
+    
+    style B fill:#FFE6CC,stroke:#333
+    style C fill:#E1D5E7,stroke:#333
+    style E fill:#D5E8D4,stroke:#333
+    style L fill:#F8CECC,stroke:#333
+    style P fill:#DAE8FC,stroke:#333
+    
+    classDef external fill:#FFF,stroke:#E74C3C,stroke-width:2px
+    class C external
 ```
 
-Example:
-- Product A: Semantic rank 3, BM25 rank 1 → RRF = 1/63 + 1/61 = 0.0323
-- Product B: Semantic rank 1, BM25 rank 10 → RRF = 1/61 + 1/70 = 0.0307
-- Product C: Semantic rank 2, BM25 rank 2 → RRF = 1/62 + 1/62 = 0.0323
+**RRF Score Calculation Example:**
 
-**Why Hybrid Search?**
-- **Semantic:** Captures intent ("wireless headphones" ≈ "bluetooth earbuds")
-- **BM25:** Captures exact keywords ("Sony WH-1000XM5")
-- **RRF:** Balances both strategies (prevents semantic-only blind spots)
+| Product | Semantic Rank | BM25 Rank | RRF Score | Final Rank |
+|---------|---------------|-----------|-----------|------------|
+| A | 3 | 1 | 1/63 + 1/61 = **0.0323** | 1 |
+| B | 1 | 10 | 1/61 + 1/70 = **0.0307** | 3 |
+| C | 2 | 2 | 1/62 + 1/62 = **0.0323** | 2 |
+| D | 5 | 3 | 1/65 + 1/63 = **0.0312** | 4 |
+
+**Why Hybrid Search Works:**
+- **Semantic Search**: Captures intent and conceptual similarity
+  - "wireless headphones" matches "bluetooth earbuds", "cordless audio"
+- **BM25 Keyword Search**: Captures exact term matches
+  - "Sony WH-1000XM5" requires exact brand/model name
+- **RRF Fusion**: Balances both strategies, prevents single-method bias
+  - Products strong in both get highest scores
+  - Products strong in one method still rank reasonably
 
 ### 5.3 LangSmith Tracing Flow
 

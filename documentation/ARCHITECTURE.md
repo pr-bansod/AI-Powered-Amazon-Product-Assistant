@@ -221,7 +221,7 @@ flowchart TD
     O --> P[6. CONTEXT ENRICHMENT<br/>rag_pipeline_wrapper]
     P --> Q[Fetch image URLs + prices<br/>from Qdrant for UI]
     
-    Q --> R[Response<br/>{answer, used_context}]
+    Q --> R["Response: answer + used_context"]
     
     style B fill:#FFE6CC,stroke:#333
     style D fill:#D5E8D4,stroke:#333

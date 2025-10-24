@@ -1096,54 +1096,7 @@ print(raw_response.choices[0].message.function_call)  # See JSON schema enforcem
 
 ---
 
-## 12. Future Enhancements
 
-### 12.1 Planned Features (Phase 3+)
-
-**Phase 3: Agents & Agentic Systems (Current)**
-- Multi-step reasoning with LangGraph
-- Tool use (price comparison, inventory check)
-- Memory persistence (conversation history)
-- Reflection and self-critique
-
-**Phase 4: Advanced Retrieval**
-- Multi-vector indexing (images + text)
-- Parent-child chunk retrieval
-- Hypothetical document embeddings (HyDE)
-- Cross-encoder re-ranking (Cohere)
-
-**Phase 5: Personalization**
-- User preferences (budget, brands, features)
-- Collaborative filtering
-- Purchase history integration
-- Conversational profile building
-
-**Phase 6: Production Hardening**
-- Horizontal scaling (load balancing)
-- A/B testing framework (prompt variants)
-- Cost optimization (caching, cheaper models)
-- Multi-region deployment
-
-### 12.2 Technical Debt
-
-**High Priority:**
-1. **Error Recovery:** Add retry logic for OpenAI/Qdrant API calls
-2. **Async Pipeline:** Convert synchronous pipeline to `async` (FastAPI best practice)
-3. **Batch Processing:** Support multiple queries in single request
-4. **Response Caching:** Cache answers for identical queries (Redis)
-
-**Medium Priority:**
-1. **Structured Logging:** Migrate to JSON logs (easier parsing)
-2. **Schema Versioning:** Track Pydantic model versions for compatibility
-3. **Prompt Versioning:** Implement semantic versioning for prompts (1.0.0 → 2.0.0)
-4. **Config Validation:** Validate Qdrant collection schema on startup
-
-**Low Priority:**
-1. **Code Documentation:** Add docstrings to all functions
-2. **Type Hints:** Enforce strict type checking with `mypy`
-3. **Dependency Pinning:** Pin minor versions (e.g., `openai==1.14.*`)
-
----
 
 ## 13. Appendices
 
@@ -1303,5 +1256,5 @@ CMD ["uv", "run", "streamlit", "run", "src/chatbot_ui/app.py", "--server.port", 
 
 **Document Version:** 1.0.0  
 **Last Updated:** October 24, 2025  
-**Authors:** Architecture Team  
+**Authors:** Prashant Bansod 
 **Status:** Production-Ready (Phase 2 Complete)

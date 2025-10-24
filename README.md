@@ -35,7 +35,7 @@ This project transforms traditional e-commerce search into an interactive, AI-dr
 - **YAML-Based Prompt Management**: Version-controlled Jinja2 templates for systematic prompt engineering
 - **Docker Hot Reload**: Volume-mounted development environment for instant code updates
 
-## Architecture
+## Architecture (This architecture will be updated based on the progress in the project)
 
 The system follows a microservices architecture with three containerized components orchestrated through Docker Compose.
 

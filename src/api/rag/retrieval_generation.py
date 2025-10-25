@@ -1,6 +1,4 @@
 import openai
-from openai.types.shared import responses_model
-from qdrant_client import QdrantClient 
 from langsmith import traceable, get_current_run_tree
 
 
@@ -230,7 +228,7 @@ def generate_answer(prompt):
 @traceable(
     name="rag-pipeline"
 )
-def rag_pipeline(question, top_k=5):
+def rag_pipeline(question,qdrant_client, top_k=5):
     """
     Complete RAG (Retrieval-Augmented Generation) pipeline for answering questions about products.
     
@@ -251,7 +249,6 @@ def rag_pipeline(question, top_k=5):
         >>> answer = rag_pipeline("What kind of earphones can I get?", top_k=10)
         >>> print(answer)
     """
-    qdrant_client = QdrantClient(url="http://qdrant:6333")
     retrieved_context = retrieve_data(question, qdrant_client, top_k)
     processed_context = process_context(retrieved_context)
     prompt = build_prompt(processed_context, question)

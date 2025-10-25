@@ -10,7 +10,9 @@ An intelligent conversational assistant that helps users discover and explore Am
 
 ## Overview
 
-This project transforms traditional e-commerce search into an interactive, AI-driven experience. By leveraging vector embeddings and semantic search, the assistant understands user intent beyond keyword matching and provides personalized product recommendations with detailed explanations.
+This capstone project demonstrates the evolution of AI engineering from basic RAG systems to sophisticated agentic applications. Built as a production-ready learning journey, it transforms traditional e-commerce search into an interactive, AI-driven experience powered by Amazon's publicly available Electronics product dataset.
+
+The assistant leverages vector embeddings and semantic search to understand user intent beyond keyword matching, providing personalized product recommendations with detailed explanations. Each development phase introduces new capabilities—from simple retrieval-augmented generation to advanced multi-step agentic workflows—showcasing end-to-end AI engineering skills in a real-world use case.
 
 **Project Timeline**:
 - **Phase 0** (Sep 29 - Oct 5): ✅ Problem framing & infrastructure setup
@@ -23,6 +25,37 @@ This project transforms traditional e-commerce search into an interactive, AI-dr
 - **Final Polish** (Nov 17-23): 🎯 Final integration & documentation
 
 **🏁 Project Completion: November 23, 2024**
+
+## Data Source
+
+This project uses **Amazon's publicly available product dataset**, specifically focusing on the **Electronics category** for manageability and domain focus.
+
+### Dataset Components
+
+- **Product Metadata**: Product titles, descriptions, specifications, categories, brand information
+- **Customer Reviews**: User reviews with ratings, review text, helpfulness votes, and review metadata
+- **Rich Product Information**: Images, pricing (when available), technical specifications
+
+### Dataset Characteristics
+
+- **Source**: Open datasets compiled from Amazon's website for research and educational purposes
+- **Dataset Link**: [Amazon Reviews 2023 - Electronics Category](https://amazon-reviews-2023.github.io/#grouped-by-category)
+- **License**: Free for non-commercial use (academic projects, research)
+- **Attribution**: Proper attribution required to original data compilers
+- **Scope**: Focused subset of Electronics category (manageable size for RAG demonstration)
+- **Format**: JSONL files with structured product and review data
+
+### Data Usage in RAG Pipeline
+
+1. **Collection**: Downloaded from public repositories
+2. **Preprocessing**: Filtering, cleaning, and formatting (see `notebooks/phase_2/01-RAG-preprocessing-Amazon.ipynb`)
+3. **Embedding**: Generated using OpenAI text-embedding-3-small (1536 dimensions)
+4. **Storage**: Indexed in Qdrant collection `Amazon-items-collection-01-hybrid-search` with dual indexing:
+   - Semantic search via vector embeddings
+   - Keyword search via BM25 algorithm
+5. **Retrieval**: Hybrid search combining both methods using Reciprocal Rank Fusion (RRF)
+
+> **📊 Data Exploration**: See `notebooks/phase_1/02-explore-amazon-dataset.ipynb` for detailed exploratory data analysis
 
 ## Key Features
 - **Hybrid Semantic + Keyword Search**: Combines vector similarity (OpenAI text-embedding-3-small) with BM25 keyword matching using Reciprocal Rank Fusion (RRF)
@@ -233,14 +266,50 @@ Response includes:
 - `used_context`: Array of products with images, prices, and descriptions
 
 ## Data Pipeline
-The RAG system processes Amazon Electronics data through the following stages:
 
-1. **Data Collection**: JSONL files with product metadata (title, description, ratings, reviews)
-2. **Preprocessing**: Filtering, cleaning, and formatting in `notebooks/phase_2/01-RAG-preprocessing-Amazon.ipynb`
-3. **Embedding Generation**: OpenAI embeddings for semantic representation
-4. **Vector Storage**: Upload to Qdrant collection `Amazon-items-collection-01-hybrid-search` with dual indexing (semantic + BM25)
-5. **Retrieval**: Hybrid search (20 semantic + 20 BM25) → RRF fusion → top-k results
-6. **Generation**: Structured outputs via Instructor with product references
+The RAG system processes Amazon Electronics product data through a comprehensive pipeline that transforms raw product metadata and customer reviews into a searchable knowledge base.
+
+### Pipeline Stages
+
+1. **Data Collection**: 
+   - Source: Amazon's public product datasets (Electronics category)
+   - Format: JSONL files with product metadata and customer reviews
+   - Components: Titles, descriptions, specifications, ratings, review text
+   - Subset selection: Focused category for manageability (~thousands of products)
+
+2. **Preprocessing** (`notebooks/phase_2/01-RAG-preprocessing-Amazon.ipynb`):
+   - Data cleaning and validation
+   - Filtering for quality and relevance
+   - Text normalization and formatting
+   - Review aggregation and summarization
+
+3. **Embedding Generation**:
+   - Model: OpenAI text-embedding-3-small
+   - Dimensions: 1536
+   - Input: Combined product metadata (title + description + key specs)
+   - Output: Dense semantic vectors for similarity search
+
+4. **Vector Storage**:
+   - Database: Qdrant vector database
+   - Collection: `Amazon-items-collection-01-hybrid-search`
+   - Dual indexing strategy:
+     - **Semantic index**: Vector embeddings for conceptual similarity
+     - **BM25 index**: Keyword-based sparse vectors for exact matching
+   - Persistent storage: Docker volume (`./qdrant_storage`)
+
+5. **Retrieval** (Runtime):
+   - Hybrid search strategy:
+     - Prefetch 20 results via semantic vector search
+     - Prefetch 20 results via BM25 keyword search  
+     - Reciprocal Rank Fusion (RRF) to merge and rerank
+     - Return top-k (default: 5) most relevant products
+
+6. **Generation**:
+   - LLM: GPT-4.1-mini via Instructor
+   - Structured outputs: Pydantic models for type safety
+   - Context injection: Retrieved products formatted into prompt
+   - Response format: Natural language answer + product references
+   - Enrichment: Add images, prices, and descriptions to final output
 
 > 📖 **Pipeline Details**: For in-depth technical documentation on the RAG pipeline, hybrid search implementation, and data flow diagrams, see [ARCHITECTURE.md](documentation/ARCHITECTURE.md#3-rag-pipeline-implementation)
 
@@ -549,7 +618,7 @@ docker compose logs -f api
 
 ## Contributing
 
-This is a personal portfolio project, but feedback and suggestions are welcome! Feel free to open issues or reach out with ideas.
+This is a personal portfolio/capstone project demonstrating AI engineering skills from basic RAG to advanced agentic systems. Feedback and suggestions are welcome—feel free to open issues or reach out with ideas.
 
 ## Documentation
 

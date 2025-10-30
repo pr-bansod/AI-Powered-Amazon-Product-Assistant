@@ -7,7 +7,9 @@ services:
       - 8501:8501
     env_file:
       - .env
-    restart: unless-stopped   
+    environment:
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
     volumes:
       - ./src/chatbot_ui:/app/src/chatbot_ui
 
@@ -18,8 +20,10 @@ services:
     ports:
       - 8000:8000
     env_file:
-      - .env 
-    restart: unless-stopped 
+      - .env
+    environment:
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
     volumes:
       - ./src/api:/app/src/api
   
@@ -28,6 +32,8 @@ services:
     ports:
       - 6333:6333
       - 6334:6334
+    environment:
+      - TZ=Asia/Tokyo
     volumes:
       - ./qdrant_storage:/qdrant/storage:z
     restart: unless-stopped 

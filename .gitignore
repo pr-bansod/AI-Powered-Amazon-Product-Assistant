@@ -197,6 +197,9 @@ cython_debug/
 # macOS
 .DS_Store
 
+# Claude Code
+CLAUDE.md
+
 # PyPI configuration file
 .pypirc
 

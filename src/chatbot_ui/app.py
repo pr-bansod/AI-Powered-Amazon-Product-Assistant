@@ -1,18 +1,19 @@
-import logging
-import requests
 import streamlit as st
-from core.config import config
+import requests
+import logging
 
 from core.config import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 st.set_page_config(
-    page_title="Ecommerce Assitant",
+    page_title="Ecommerce Assistant",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
+
 
 def api_call(method, url, **kwargs):
 
@@ -51,7 +52,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I assist you today?"}]
 
 if "used_context" not in st.session_state:
-    st.session_state.used_context = []   
+    st.session_state.used_context = []
+
 
 with st.sidebar:
     # Create tabs in the sidebar
@@ -62,13 +64,12 @@ with st.sidebar:
         if st.session_state.used_context:
             for idx, item in enumerate(st.session_state.used_context):
                 st.caption(item.get('description', 'No description'))
-                if item.get('image_url'):
+                if 'image_url' in item:
                     st.image(item["image_url"], width=250)
-                st.caption(f"Price: {item.get('price', 'N/A')} USD")
+                st.caption(f"Price: {item['price']} USD")
                 st.divider()
         else:
-            st.info("No suggestions yet")   
-
+            st.info("No suggestions yet")
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -82,8 +83,16 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
     with st.chat_message("assistant"):
         status, output = api_call("post", f"{config.API_URL}/rag", json={"query": prompt})
 
-        answer = output["answer"]
-        used_context = output["used_context"]
+        if not status:
+            st.error(output.get("message", "Request failed"))
+            st.stop()
+
+        answer = output.get("answer")
+        used_context = output.get("used_context", [])
+
+        if answer is None:
+            st.error("Unexpected response from API: missing 'answer'")
+            st.stop()
 
         st.session_state.used_context = used_context
 

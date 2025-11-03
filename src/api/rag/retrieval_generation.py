@@ -7,6 +7,7 @@ from langsmith import traceable, get_current_run_tree
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, Prefetch, FusionQuery, Document
+from api.rag.utils.prompt_management import prompt_template_config
 
 
 
@@ -90,11 +91,27 @@ def retrieve_data(query, qdrant_client, k=5):
         >>> print(len(results["retrieved_context_ids"]))
         10
     """
-    query_embeddings = get_embedding(query)
+    query_embedding = get_embedding(query)
+
     results = qdrant_client.query_points(
-        collection_name="Amazon-items-collection-00",
-        query=query_embeddings,
-        limit=k
+        collection_name="Amazon-items-collection-01-hybrid-search",
+        prefetch=[
+            Prefetch(
+                query=query_embedding,
+                using="text-embedding-3-small",
+                limit=20
+            ),
+            Prefetch(
+                query=Document(
+                    text=query,
+                    model="qdrant/bm25"
+                ),
+                using="bm25",
+                limit=20
+            )
+        ],
+        query=FusionQuery(fusion="rrf"),
+        limit=k,
     )
 
     retrieved_context_ids = []
@@ -179,32 +196,13 @@ def build_prompt(preprocessed_context, question):
         >>> print("shopping assistant" in prompt)
         True
     """
-    prompt = f"""
-You are a shopping assistant that can answer questions about the products in stock.
+    template = prompt_template_config("prompts/retrieval_generation.yaml", "retrieval_generation")
+    rendered_prompt = template.render(
+        preprocessed_context=preprocessed_context, 
+        question=question
+    )
 
-You will be given a question and a list of context.
-
-Instructtions:
-- You need to answer the question based on the provided context only.
-- Never use word context and refer to it as the available products.
-- As an output you need to provide:
-
-* The answer to the question based on the provided context.
-* The list of the IDs of the chunks that were used to answer the question. Only return the ones that are used in the answer.
-* Short description (1-2 sentences) of the item based on the description provided in the context.
-
-- The short description should have the name of the item.
-- The answer to the question should contain detailed information about the product and returned with detailed specification in bullet points.
-
-
-Context:
-{preprocessed_context}
-
-Question:
-{question}
-"""
-
-    return prompt
+    return rendered_prompt
 
 
 @traceable(
@@ -234,10 +232,6 @@ def generate_answer(prompt):
         >>> print(type(answer))
         <class 'str'>
 
-    Note:
-        - Uses gpt-4o-mini model for cost-effective inference
-        - Temperature set to 0.5 for balanced creativity and consistency
-        - Prompt is sent as a system message for stronger instruction-following
     """
     client = instructor.from_openai(openai.OpenAI())
 
@@ -276,10 +270,6 @@ def rag_pipeline(question,qdrant_client, top_k=5):
     
     Returns:
         str: Generated answer based on retrieved product information
-        
-    Example:
-        >>> answer = rag_pipeline("What kind of earphones can I get?", top_k=10)
-        >>> print(answer)
     """
     retrieved_context = retrieve_data(question, qdrant_client, top_k)
     processed_context = process_context(retrieved_context)
@@ -299,8 +289,32 @@ def rag_pipeline(question,qdrant_client, top_k=5):
     return final_result 
 
 
-def rag_pipeline_wrapper(question, top_k=5):
+def rag_pipeline_wrapper(question: str, top_k: int = 5) -> dict[str, any]:
+    """Execute RAG pipeline and enrich results with product metadata for API response.
 
+    This wrapper function extends the base RAG pipeline by:
+    1. Initializing a connection to the Qdrant vector database
+    2. Executing the RAG pipeline to get answer and references
+    3. Enriching reference items with additional metadata (images, prices)
+    4. Formatting the response for API consumption
+
+    The function queries Qdrant for each referenced product to fetch complete
+    metadata including product images and pricing information that wasn't
+    included in the initial vector search results.
+
+    Args:
+        question: The user's question about products to be answered using RAG
+        top_k: Number of most similar products to retrieve from vector database.
+            Defaults to 5.
+
+    Returns:
+        A dictionary containing:
+            - answer (str): Generated natural language answer to the question
+            - used_context (list[dict]): List of product references used, each with:
+                - image_url (str): URL to product image
+                - price (float): Product price
+                - description (str): Product description
+    """
     qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     result = rag_pipeline(question, qdrant_client, top_k)
@@ -310,15 +324,16 @@ def rag_pipeline_wrapper(question, top_k=5):
 
     for item in result.get("references", []):
         payload = qdrant_client.query_points(
-            collection_name="Amazon-items-collection-00",
+            collection_name="Amazon-items-collection-01-hybrid-search",
             query=dummy_vector,
+            using="text-embedding-3-small",
             limit=1,
             with_payload=True,
             query_filter=Filter(
                 must=[
                     FieldCondition(
                         key="parent_asin",
-                        match=MatchValue(value=item.id))
+                         match=MatchValue(value=item.id))
                 ]
             )
         ).points[0].payload

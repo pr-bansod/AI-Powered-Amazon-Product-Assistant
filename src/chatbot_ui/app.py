@@ -1,8 +1,9 @@
-import streamlit as st
-import requests
 import logging
 
-from core.config import config
+import requests
+import streamlit as st
+
+from .core.config import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +17,6 @@ st.set_page_config(
 
 
 def api_call(method, url, **kwargs):
-
     def _show_error_popup(message):
         """Show error message as a popup in the top-right corner."""
         st.session_state["error_popup"] = {
@@ -49,7 +49,9 @@ def api_call(method, url, **kwargs):
 
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I assist you today?"}]
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hello! How can I assist you today?"}
+    ]
 
 if "used_context" not in st.session_state:
     st.session_state.used_context = []
@@ -57,14 +59,14 @@ if "used_context" not in st.session_state:
 
 with st.sidebar:
     # Create tabs in the sidebar
-    suggestions_tab, = st.tabs(["🔍 Suggestions"])
-    
+    (suggestions_tab,) = st.tabs(["🔍 Suggestions"])
+
     # Suggestions Tab
     with suggestions_tab:
         if st.session_state.used_context:
             for idx, item in enumerate(st.session_state.used_context):
-                st.caption(item.get('description', 'No description'))
-                if 'image_url' in item:
+                st.caption(item.get("description", "No description"))
+                if "image_url" in item:
                     st.image(item["image_url"], width=250)
                 st.caption(f"Price: {item['price']} USD")
                 st.divider()
@@ -81,7 +83,9 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        status, output = api_call("post", f"{config.API_URL}/rag", json={"query": prompt})
+        status, output = api_call(
+            "post", f"{config.API_URL}/rag", json={"query": prompt}
+        )
 
         if not status:
             st.error(output.get("message", "Request failed"))

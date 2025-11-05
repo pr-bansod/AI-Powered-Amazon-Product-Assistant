@@ -31,10 +31,10 @@ def prompt_template_config(yaml_file: str, prompt_key: str) -> Template:
         >>> template = prompt_template_config("prompts/rag.yaml", "retrieval_generation")
         >>> rendered = template.render(context="Product info...", question="What is X?")
     """
-    with open(yaml_file, 'r') as file:
+    with open(yaml_file, "r") as file:
         config = yaml.safe_load(file)
 
-    template_content = config['prompts'][prompt_key]
+    template_content = config["prompts"][prompt_key]
 
     template = Template(template_content)
 
@@ -60,4 +60,3 @@ def prompt_template_registry(prompt_name: str) -> Template:
     template_content = ls_client.pull_prompt(prompt_name).messages[0].prompt.template
     template = Template(template_content)
     return template
-

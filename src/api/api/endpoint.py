@@ -1,28 +1,25 @@
-from fastapi import APIRouter, Request
 import logging
 
-from api.api.models import RAGRequest, RAGResponse, RAGUsedContext
+from fastapi import APIRouter, Request
 
-from api.rag.retrieval_generation import rag_pipeline_wrapper
-
-
+from ..rag.retrieval_generation import rag_pipeline_wrapper
+from .models import RAGRequest, RAGResponse, RAGUsedContext
 
 logger = logging.getLogger(__name__)
 
 rag_router = APIRouter()
 
-@rag_router.post("/")
-def rag(
-    request: Request,
-    payload: RAGRequest
-) -> RAGResponse:
 
+@rag_router.post("/")
+def rag(request: Request, payload: RAGRequest) -> RAGResponse:
     answer = rag_pipeline_wrapper(payload.query)
 
     return RAGResponse(
         request_id=request.state.request_id,
         answer=answer["answer"],
-        used_context=[RAGUsedContext(**used_context) for used_context in answer["used_context"]]
+        used_context=[
+            RAGUsedContext(**used_context) for used_context in answer["used_context"]
+        ],
     )
 
 

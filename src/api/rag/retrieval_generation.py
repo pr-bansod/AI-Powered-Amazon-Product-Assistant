@@ -1,29 +1,39 @@
-import openai
 import instructor
 import numpy as np
-
+import openai
+from langsmith import get_current_run_tree, traceable
 from pydantic import BaseModel, Field
-from langsmith import traceable, get_current_run_tree
-
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue, Prefetch, FusionQuery, Document
-from api.rag.utils.prompt_management import prompt_template_config
+from qdrant_client.models import (
+    Document,
+    FieldCondition,
+    Filter,
+    FusionQuery,
+    MatchValue,
+    Prefetch,
+)
 
+from .utils.prompt_management import prompt_template_config
 
 
 class RAGUsedContext(BaseModel):
     id: str = Field(description="ID of the item used to answer the question.")
-    description: str = Field(description="Short description of the item used to answer the question.")
+    description: str = Field(
+        description="Short description of the item used to answer the question."
+    )
+
 
 class RAGGenerationResponseWithReferences(BaseModel):
     answer: str = Field(description="Answer to the question.")
-    references: list[RAGUsedContext] = Field(description="List of items used to answer the question.")
+    references: list[RAGUsedContext] = Field(
+        description="List of items used to answer the question."
+    )
 
 
 @traceable(
     name="embed-query",
     run_type="embedding",
-    metadata={"ls_provider":"openai", "ls_model_name":"text-embedding-3-small"}
+    metadata={"ls_provider": "openai", "ls_model_name": "text-embedding-3-small"},
 )
 def get_embedding(text, model="text-embedding-3-small"):
     """
@@ -48,23 +58,18 @@ def get_embedding(text, model="text-embedding-3-small"):
         >>> len(embedding)
         1536
     """
-    response = openai.embeddings.create(
-        input=text,
-        model=model
-    )
+    response = openai.embeddings.create(input=text, model=model)
     # to print llm usage on langsmit UI
     current_run = get_current_run_tree()
     if current_run:
         current_run.metadata["usage_metadata"] = {
-            "input_tokens":response.usage.prompt_tokens,
-            "total_tokens": response.usage.total_tokens 
+            "input_tokens": response.usage.prompt_tokens,
+            "total_tokens": response.usage.total_tokens,
         }
     return response.data[0].embedding
 
-@traceable(
-    name="retrieve-data",
-    run_type="retriever"
-)
+
+@traceable(name="retrieve-data", run_type="retriever")
 def retrieve_data(query, qdrant_client, k=5):
     """
     Retrieve relevant product data from Qdrant vector database based on semantic similarity.
@@ -96,19 +101,10 @@ def retrieve_data(query, qdrant_client, k=5):
     results = qdrant_client.query_points(
         collection_name="Amazon-items-collection-01-hybrid-search",
         prefetch=[
+            Prefetch(query=query_embedding, using="text-embedding-3-small", limit=20),
             Prefetch(
-                query=query_embedding,
-                using="text-embedding-3-small",
-                limit=20
+                query=Document(text=query, model="qdrant/bm25"), using="bm25", limit=20
             ),
-            Prefetch(
-                query=Document(
-                    text=query,
-                    model="qdrant/bm25"
-                ),
-                using="bm25",
-                limit=20
-            )
         ],
         query=FusionQuery(fusion="rrf"),
         limit=k,
@@ -117,7 +113,7 @@ def retrieve_data(query, qdrant_client, k=5):
     retrieved_context_ids = []
     retrieved_context = []
     retrieved_context_ratings = []
-    similarity_scores  = []
+    similarity_scores = []
 
     for result in results.points:
         retrieved_context_ids.append(result.payload["parent_asin"])
@@ -133,10 +129,7 @@ def retrieve_data(query, qdrant_client, k=5):
     }
 
 
-@traceable(
-    name="format-retrieved-context",
-    run_type="prompt"
-)
+@traceable(name="format-retrieved-context", run_type="prompt")
 def process_context(context):
     """
     Format retrieved product data into a structured string for the LLM prompt.
@@ -165,16 +158,17 @@ def process_context(context):
         - B002: Bluetooth speaker
     """
     formatted_context = ""
-    for id, chunk, rating in zip(context["retrieved_context_ids"], context["retrieved_context"],context["retrieved_context_ratings"]):
+    for id, chunk, rating in zip(
+        context["retrieved_context_ids"],
+        context["retrieved_context"],
+        context["retrieved_context_ratings"],
+    ):
         formatted_context += f"- {id}:, rating:{rating}, description:{chunk}\n"
 
     return formatted_context
 
 
-@traceable(
-    name="build-prompt",
-    run_type="prompt"
-)
+@traceable(name="build-prompt", run_type="prompt")
 def build_prompt(preprocessed_context, question):
     """
     Construct a prompt for the LLM that includes product context and user question.
@@ -196,10 +190,11 @@ def build_prompt(preprocessed_context, question):
         >>> print("shopping assistant" in prompt)
         True
     """
-    template = prompt_template_config("prompts/retrieval_generation.yaml", "retrieval_generation")
+    template = prompt_template_config(
+        "prompts/retrieval_generation.yaml", "retrieval_generation"
+    )
     rendered_prompt = template.render(
-        preprocessed_context=preprocessed_context, 
-        question=question
+        preprocessed_context=preprocessed_context, question=question
     )
 
     return rendered_prompt
@@ -208,7 +203,7 @@ def build_prompt(preprocessed_context, question):
 @traceable(
     name="generate-answer",
     run_type="llm",
-    metadata={"ls_provider":"openai", "ls_model_name":"gpt-4o-mini"}
+    metadata={"ls_provider": "openai", "ls_model_name": "gpt-4o-mini"},
 )
 def generate_answer(prompt):
     """
@@ -239,35 +234,34 @@ def generate_answer(prompt):
         model="gpt-4.1-mini",
         messages=[{"role": "system", "content": prompt}],
         temperature=0.5,
-        response_model=RAGGenerationResponseWithReferences
+        response_model=RAGGenerationResponseWithReferences,
     )
 
     current_run = get_current_run_tree()
     if current_run:
         current_run.metadata["usage_metadata"] = {
-            "input_tokens":raw_response.usage.prompt_tokens,
+            "input_tokens": raw_response.usage.prompt_tokens,
             "output_tokens": raw_response.usage.completion_tokens,
-            "total_tokens": raw_response.usage.total_tokens 
+            "total_tokens": raw_response.usage.total_tokens,
         }
     return response
-    
-@traceable(
-    name="rag-pipeline"
-)
-def rag_pipeline(question,qdrant_client, top_k=5):
+
+
+@traceable(name="rag-pipeline")
+def rag_pipeline(question, qdrant_client, top_k=5):
     """
     Complete RAG (Retrieval-Augmented Generation) pipeline for answering questions about products.
-    
+
     This function implements a full RAG pipeline that:
     1. Retrieves relevant product information from a Qdrant vector database
     2. Processes the retrieved context into a formatted string
     3. Builds a prompt with the context and question
     4. Generates an answer using OpenAI's GPT model
-    
+
     Args:
         question (str): The user's question about products
         top_k (int, optional): Number of most similar products to retrieve. Defaults to 5.
-    
+
     Returns:
         str: Generated answer based on retrieved product information
     """
@@ -277,16 +271,15 @@ def rag_pipeline(question,qdrant_client, top_k=5):
     answer = generate_answer(prompt)
 
     final_result = {
-
-        "answer" : answer.answer,
+        "answer": answer.answer,
         "references": answer.references,
         "question": question,
         "retrieved_context_ids": retrieved_context["retrieved_context_ids"],
         "retrieved_context": retrieved_context["retrieved_context"],
-        "similarity_scores": retrieved_context["similarity_scores"]
-    } 
-    
-    return final_result 
+        "similarity_scores": retrieved_context["similarity_scores"],
+    }
+
+    return final_result
 
 
 def rag_pipeline_wrapper(question: str, top_k: int = 5) -> dict[str, any]:
@@ -323,27 +316,28 @@ def rag_pipeline_wrapper(question: str, top_k: int = 5) -> dict[str, any]:
     dummy_vector = np.zeros(1536).tolist()
 
     for item in result.get("references", []):
-        payload = qdrant_client.query_points(
-            collection_name="Amazon-items-collection-01-hybrid-search",
-            query=dummy_vector,
-            using="text-embedding-3-small",
-            limit=1,
-            with_payload=True,
-            query_filter=Filter(
-                must=[
-                    FieldCondition(
-                        key="parent_asin",
-                         match=MatchValue(value=item.id))
-                ]
+        payload = (
+            qdrant_client.query_points(
+                collection_name="Amazon-items-collection-01-hybrid-search",
+                query=dummy_vector,
+                using="text-embedding-3-small",
+                limit=1,
+                with_payload=True,
+                query_filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="parent_asin", match=MatchValue(value=item.id)
+                        )
+                    ]
+                ),
             )
-        ).points[0].payload
+            .points[0]
+            .payload
+        )
         image_url = payload.get("images", "")
         price = payload.get("price")
-        used_context.append({"image_url": image_url, "price": price, "description": item.description})
+        used_context.append(
+            {"image_url": image_url, "price": price, "description": item.description}
+        )
 
-    return {
-        "answer": result["answer"],
-        "used_context": used_context
-    }
-   
-
+    return {"answer": result["answer"], "used_context": used_context}

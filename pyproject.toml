@@ -3,6 +3,7 @@ name = "01-ai-engineering"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [{ name = "Prashant Bansod", email = "pr.bansod23@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "google-genai>=1.39.1",
@@ -54,8 +55,15 @@ ignore_errors = true
 
 [tool.ruff]
 line-length = 130
+select = ["E", "F", "I", "B"]
+ignore = ["F401", "E722" ]
 exclude = ["notebooks/**", ".venv/**"]
 src = ["src", "tests"]
-lint.select = [
-  "I",
-]
+lint.select = ["I"]
+fix = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 88

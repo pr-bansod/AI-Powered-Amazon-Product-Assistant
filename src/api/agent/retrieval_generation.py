@@ -18,16 +18,12 @@ from .utils.prompt_management import prompt_template_config
 
 class RAGUsedContext(BaseModel):
     id: str = Field(description="ID of the item used to answer the question.")
-    description: str = Field(
-        description="Short description of the item used to answer the question."
-    )
+    description: str = Field(description="Short description of the item used to answer the question.")
 
 
 class RAGGenerationResponseWithReferences(BaseModel):
     answer: str = Field(description="Answer to the question.")
-    references: list[RAGUsedContext] = Field(
-        description="List of items used to answer the question."
-    )
+    references: list[RAGUsedContext] = Field(description="List of items used to answer the question.")
 
 
 @traceable(
@@ -102,9 +98,7 @@ def retrieve_data(query, qdrant_client, k=5):
         collection_name="Amazon-items-collection-01-hybrid-search",
         prefetch=[
             Prefetch(query=query_embedding, using="text-embedding-3-small", limit=20),
-            Prefetch(
-                query=Document(text=query, model="qdrant/bm25"), using="bm25", limit=20
-            ),
+            Prefetch(query=Document(text=query, model="qdrant/bm25"), using="bm25", limit=20),
         ],
         query=FusionQuery(fusion="rrf"),
         limit=k,
@@ -151,7 +145,7 @@ def process_context(context):
         >>> context = {
         ...     "retrieved_context_ids": ["B001", "B002"],
         ...     "retrieved_context": ["Wireless headphones", "Bluetooth speaker"],
-        ...     "similarity_scores": [0.95, 0.89]
+        ...     "similarity_scores": [0.95, 0.89],
         ... }
         >>> print(process_context(context))
         - B001: Wireless headphones
@@ -190,12 +184,8 @@ def build_prompt(preprocessed_context, question):
         >>> print("shopping assistant" in prompt)
         True
     """
-    template = prompt_template_config(
-        "prompts/retrieval_generation.yaml", "retrieval_generation"
-    )
-    rendered_prompt = template.render(
-        preprocessed_context=preprocessed_context, question=question
-    )
+    template = prompt_template_config("prompts/retrieval_generation.yaml", "retrieval_generation")
+    rendered_prompt = template.render(preprocessed_context=preprocessed_context, question=question)
 
     return rendered_prompt
 
@@ -323,21 +313,13 @@ def rag_pipeline_wrapper(question: str, top_k: int = 5) -> dict[str, any]:
                 using="text-embedding-3-small",
                 limit=1,
                 with_payload=True,
-                query_filter=Filter(
-                    must=[
-                        FieldCondition(
-                            key="parent_asin", match=MatchValue(value=item.id)
-                        )
-                    ]
-                ),
+                query_filter=Filter(must=[FieldCondition(key="parent_asin", match=MatchValue(value=item.id))]),
             )
             .points[0]
             .payload
         )
         image_url = payload.get("images", "")
         price = payload.get("price")
-        used_context.append(
-            {"image_url": image_url, "price": price, "description": item.description}
-        )
+        used_context.append({"image_url": image_url, "price": price, "description": item.description})
 
     return {"answer": result["answer"], "used_context": used_context}

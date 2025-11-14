@@ -200,6 +200,10 @@ cython_debug/
 # Claude Code
 CLAUDE.md
 
+# Markdown files (except README)
+*.md
+!README.md
+
 # PyPI configuration file
 .pypirc
 

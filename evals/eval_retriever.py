@@ -1,10 +1,9 @@
+from api.rag.retrieval_generation import rag_pipeline
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langsmith import Client
 from qdrant_client import QdrantClient
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
-
-from api.rag.retrieval_generation import rag_pipeline
 
 ls_client = Client()
 qdrant_client = QdrantClient(url="http://localhost:6333")
@@ -18,9 +17,7 @@ from ragas.metrics import (
 )
 
 ragas_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4.1-mini"))
-ragas_embeddings = LangchainEmbeddingsWrapper(
-    OpenAIEmbeddings(model="text-embedding-3-small")
-)
+ragas_embeddings = LangchainEmbeddingsWrapper(OpenAIEmbeddings(model="text-embedding-3-small"))
 
 
 async def ragas_faithfulness(run, example):

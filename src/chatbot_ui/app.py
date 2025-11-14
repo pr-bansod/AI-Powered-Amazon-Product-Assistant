@@ -2,8 +2,7 @@ import logging
 
 import requests
 import streamlit as st
-
-from .core.config import config
+from core.config import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,9 +48,7 @@ def api_call(method, url, **kwargs):
 
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! How can I assist you today?"}
-    ]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I assist you today?"}]
 
 if "used_context" not in st.session_state:
     st.session_state.used_context = []
@@ -64,11 +61,28 @@ with st.sidebar:
     # Suggestions Tab
     with suggestions_tab:
         if st.session_state.used_context:
+            st.caption(f"Found {len(st.session_state.used_context)} items")
             for idx, item in enumerate(st.session_state.used_context):
+                logger.info(f"Item {idx}: {item}")
                 st.caption(item.get("description", "No description"))
-                if "image_url" in item:
-                    st.image(item["image_url"], width=250)
-                st.caption(f"Price: {item['price']} USD")
+
+                # Check if image_url exists and is not empty
+                image_url = item.get("image_url", "")
+                if image_url:
+                    try:
+                        st.image(image_url, width=250)
+                    except Exception as e:
+                        st.error(f"Failed to load image: {str(e)}")
+                        logger.error(f"Image error: {e}, URL: {image_url}")
+                else:
+                    st.warning("No image URL available")
+
+                # Handle price safely
+                price = item.get("price")
+                if price is not None:
+                    st.caption(f"Price: ${price} USD")
+                else:
+                    st.caption("Price: Not available")
                 st.divider()
         else:
             st.info("No suggestions yet")
@@ -83,20 +97,13 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        status, output = api_call(
-            "post", f"{config.API_URL}/rag", json={"query": prompt}
-        )
+        status, output = api_call("post", f"{config.API_URL}/rag", json={"query": prompt})
 
-        if not status:
-            st.error(output.get("message", "Request failed"))
-            st.stop()
+        answer = output["answer"]
+        used_context = output["used_context"]
 
-        answer = output.get("answer")
-        used_context = output.get("used_context", [])
-
-        if answer is None:
-            st.error("Unexpected response from API: missing 'answer'")
-            st.stop()
+        # Debug logging
+        logger.info(f"Used context: {used_context}")
 
         st.session_state.used_context = used_context
 

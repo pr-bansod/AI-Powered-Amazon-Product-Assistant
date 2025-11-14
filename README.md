@@ -78,7 +78,7 @@ The system follows a microservices architecture with three containerized compone
 
 ### System Overview
 
-```
+```mermaid
 graph TB
     subgraph "Frontend"
         UI[Streamlit UI<br>Port 8501]
@@ -104,7 +104,7 @@ graph TB
 
 ### Component Dependencies
 
-```
+```mermaid
 graph TD
     A[Streamlit UI] --> |HTTP| B[FastAPI Backend]
     B --> |gRPC| C[Qdrant Vector DB]
@@ -125,7 +125,7 @@ graph TD
 
 ### Technology Stack
 
-```
+```mermaid
 graph LR
     A[Python 3.12+] --> B[FastAPI]
     A --> C[Streamlit]
@@ -315,7 +315,7 @@ The RAG system processes Amazon Electronics product data through a comprehensive
 
 ### Hybrid Search Architecture
 
-```
+```mermaid
 sequenceDiagram
     participant User
     participant Frontend

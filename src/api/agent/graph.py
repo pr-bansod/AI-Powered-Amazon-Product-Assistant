@@ -7,10 +7,12 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
+from langgraph.checkpoint.postgres import PostgresSaver
 
 from api.agent.agents import RAGUsedContext, ToolCall, agent_node, intent_router_node
 from api.agent.tools import get_formatted_context
 from api.agent.utils.utils import get_tool_descriptions
+
 
 
 class State(BaseModel):
@@ -67,27 +69,34 @@ workflow.add_conditional_edges("agent_node", tool_router, {"tools": "tool_node",
 
 workflow.add_edge("tool_node", "agent_node")
 
-graph = workflow.compile()
 
 
 #### Agent Execution function
 
 
-def run_agent(question: str):
+def run_agent(question: str, thread_id: str):
     initial_state = {"messages": [{"role": "user", "content": question}], "iteration": 0, "available_tools": tool_descriptions}
 
-    result = graph.invoke(initial_state)
+    config = {"configurable": {"thread_id": thread_id}}
+    with PostgresSaver.from_conn_string("postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db") as checkpointer:
+        checkpointer.setup()
+        graph = workflow.compile(checkpointer=checkpointer)
+        result = graph.invoke(initial_state, config=config) 
 
     return result
 
+ 
+  
 
-def run_agent_wrapper(question: str):
+
+def run_agent_wrapper(question: str, thread_id:str):
     import logging
     logger = logging.getLogger(__name__)
 
     qdrant_client = QdrantClient(url="http://qdrant:6333")
+   
 
-    result = run_agent(question)
+    result = run_agent(question, thread_id)
 
     used_context = []
     dummy_vector = np.zeros(1536).tolist()

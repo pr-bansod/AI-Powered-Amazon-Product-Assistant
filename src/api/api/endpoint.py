@@ -11,8 +11,12 @@ rag_router = APIRouter()
 
 
 @rag_router.post("/")
-def rag(request: Request, payload: AgentRequest) -> AgentResponse:
-    answer = run_agent_wrapper(payload.query)
+def rag(
+    request: Request, 
+    payload: AgentRequest
+    ) -> AgentResponse:
+
+    answer = run_agent_wrapper(payload.query, payload.thread_id)
 
     return AgentResponse(
         request_id=request.state.request_id,

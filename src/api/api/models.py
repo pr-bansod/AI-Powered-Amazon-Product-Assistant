@@ -1,10 +1,12 @@
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from sqlalchemy import desc
 
 
 class AgentRequest(BaseModel):
     query: str = Field(..., description="The query to be used in the RAG pipeline")
+    thread_id: str = Field(..., description="The thread id")
 
 
 class RAGUsedContext(BaseModel):

@@ -1,8 +1,9 @@
 import logging
 
 from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 
-from api.agent.graph import run_agent_wrapper
+from api.agent.graph import run_agent_stream_wrapper
 from api.api.models import AgentRequest, AgentResponse, RAGUsedContext
 
 logger = logging.getLogger(__name__)
@@ -11,18 +12,8 @@ rag_router = APIRouter()
 
 
 @rag_router.post("/")
-def rag(
-    request: Request, 
-    payload: AgentRequest
-    ) -> AgentResponse:
-
-    answer = run_agent_wrapper(payload.query, payload.thread_id)
-
-    return AgentResponse(
-        request_id=request.state.request_id,
-        answer=answer["answer"],
-        used_context=[RAGUsedContext(**used_context) for used_context in answer["used_context"]],
-    )
+def rag(request: Request, payload: AgentRequest) -> StreamingResponse:
+    return StreamingResponse(run_agent_stream_wrapper(payload.query, payload.thread_id), media_type="text/event-stream")
 
 
 api_router = APIRouter()

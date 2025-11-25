@@ -25,7 +25,6 @@ lint: ## Lint and type check
 	uv run ruff check --fix
 	uv run mypy src/
 
-
 clean: ## Clean up everything
 	docker compose down -v
 	docker system prune -f

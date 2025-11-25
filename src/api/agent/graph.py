@@ -1,18 +1,18 @@
+import json
 from operator import add
 from typing import Annotated, Any, Dict, List
 
 import numpy as np
+from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-from langgraph.checkpoint.postgres import PostgresSaver
 
 from api.agent.agents import RAGUsedContext, ToolCall, agent_node, intent_router_node
-from api.agent.tools import get_formatted_context
+from api.agent.tools import get_formatted_item_context, get_formatted_reviews_context
 from api.agent.utils.utils import get_tool_descriptions
-
 
 
 class State(BaseModel):
@@ -24,6 +24,7 @@ class State(BaseModel):
     tool_calls: List[ToolCall] = []
     final_answer: bool = False
     references: Annotated[List[RAGUsedContext], add] = []
+    trace_id: str = ""
 
 
 #### Routers
@@ -53,7 +54,7 @@ def intent_router_conditional_edges(state: State):
 
 workflow = StateGraph(State)
 
-tools = [get_formatted_context]
+tools = [get_formatted_item_context, get_formatted_reviews_context]
 tool_node = ToolNode(tools)
 tool_descriptions = get_tool_descriptions(tools)
 
@@ -70,38 +71,62 @@ workflow.add_conditional_edges("agent_node", tool_router, {"tools": "tool_node",
 workflow.add_edge("tool_node", "agent_node")
 
 
-
 #### Agent Execution function
 
 
-def run_agent(question: str, thread_id: str):
-    initial_state = {"messages": [{"role": "user", "content": question}], "iteration": 0, "available_tools": tool_descriptions}
+def run_agent_stream_wrapper(question: str, thread_id: str):
+    def _string_for_sse(message: str):
+        return f"data: {message}\n\n"
 
-    config = {"configurable": {"thread_id": thread_id}}
-    with PostgresSaver.from_conn_string("postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db") as checkpointer:
-        checkpointer.setup()
-        graph = workflow.compile(checkpointer=checkpointer)
-        result = graph.invoke(initial_state, config=config) 
+    def _process_graph_event(chunk):
+        def _is_node_start(chunk):
+            return chunk[1].get("type") == "task"
 
-    return result
+        def _is_node_end(chunk):
+            return chunk[0] == "updates"
 
- 
-  
+        def _tool_to_text(tool_call):
+            if tool_call.name == "get_formatted_item_context":
+                return f"Looking for items: {tool_call.arguments.get('query', '')}."
+            elif tool_call.name == "get_formatted_reviews_context":
+                return f"Fetching user reviews..."
+            else:
+                return "Unknown tool call..."
 
-
-def run_agent_wrapper(question: str, thread_id:str):
-    import logging
-    logger = logging.getLogger(__name__)
+        if _is_node_start(chunk):
+            if chunk[1].get("payload", {}).get("name") == "intent_router_node":
+                return "Analysing the question..."
+            if chunk[1].get("payload", {}).get("name") == "agent_node":
+                return "Planning..."
+            if chunk[1].get("payload", {}).get("name") == "tool_node":
+                message = " ".join(
+                    [_tool_to_text(tool_call) for tool_call in chunk[1].get("payload", {}).get("input", {}).tool_calls]
+                )
+                return message
+        else:
+            return False
 
     qdrant_client = QdrantClient(url="http://qdrant:6333")
-   
 
-    result = run_agent(question, thread_id)
+    initial_state = {"messages": [{"role": "user", "content": question}], "iteration": 0, "available_tools": tool_descriptions}
+    config = {"configurable": {"thread_id": thread_id}}
+
+    with PostgresSaver.from_conn_string(
+        "postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db"
+    ) as checkpointer:
+        graph = workflow.compile(checkpointer=checkpointer)
+
+        for chunk in graph.stream(initial_state, config=config, stream_mode=["debug", "values"]):
+            processed_chunk = _process_graph_event(chunk)
+
+            if processed_chunk:
+                yield _string_for_sse(processed_chunk)
+
+            if chunk[0] == "values":
+                result = chunk[1]
 
     used_context = []
     dummy_vector = np.zeros(1536).tolist()
-
-    logger.info(f"Processing {len(result.get('references', []))} references")
 
     for item in result.get("references", []):
         payload = (
@@ -116,15 +141,16 @@ def run_agent_wrapper(question: str, thread_id:str):
             .points[0]
             .payload
         )
-        image_url = payload.get("images")  # Field is "images" not "image"
+        image_url = payload.get("images")
         price = payload.get("price")
-
-        logger.info(f"Item {item.id}: image_url={image_url}, price={price}")
-
         if image_url:
             used_context.append({"image_url": image_url, "price": price, "description": item.description})
-        else:
-            logger.warning(f"No image URL found for item {item.id}")
 
-    logger.info(f"Returning {len(used_context)} items with images")
-    return {"answer": result.get("answer"), "used_context": used_context}
+    yield _string_for_sse(
+        json.dumps(
+            {
+                "type": "final_result",
+                "data": {"answer": result.get("answer"), "used_context": used_context, "trace_id": result.get("trace_id")},
+            }
+        )
+    )

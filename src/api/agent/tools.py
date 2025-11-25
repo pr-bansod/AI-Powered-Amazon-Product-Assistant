@@ -1,7 +1,7 @@
 import openai
 from langsmith import get_current_run_tree, traceable
 from qdrant_client import QdrantClient
-from qdrant_client.models import Document, FusionQuery, Prefetch
+from qdrant_client.models import Document, FieldCondition, Filter, FusionQuery, MatchAny, Prefetch
 
 
 @traceable(
@@ -24,8 +24,11 @@ def get_embedding(text, model="text-embedding-3-small"):
     return response.data[0].embedding
 
 
-@traceable(name="retrieve_data", run_type="retriever")
-def retrieve_data(query, k=5):
+#### Item Retrieval Tool
+
+
+@traceable(name="retrieve_item_data", run_type="retriever")
+def retrieve_item_data(query, k=5):
     query_embedding = get_embedding(query)
 
     qdrant_client = QdrantClient(url="http://qdrant:6333")
@@ -59,8 +62,8 @@ def retrieve_data(query, k=5):
     }
 
 
-@traceable(name="format_retrieved_context", run_type="prompt")
-def process_context(context):
+@traceable(name="format_retrieved_item_context", run_type="prompt")
+def process_item_context(context):
     formatted_context = ""
 
     for id, chunk, rating in zip(
@@ -71,7 +74,7 @@ def process_context(context):
     return formatted_context
 
 
-def get_formatted_context(query: str, top_k: int = 5) -> str:
+def get_formatted_item_context(query: str, top_k: int = 5) -> str:
     """Get the top k context, each representing an inventory item for a given query.
 
     Args:
@@ -82,7 +85,73 @@ def get_formatted_context(query: str, top_k: int = 5) -> str:
         A string of the top k context chunks with IDs and average ratings prepending each chunk, each representing an inventory item for a given query.
     """
 
-    context = retrieve_data(query, top_k)
-    formatted_context = process_context(context)
+    context = retrieve_item_data(query, top_k)
+    formatted_context = process_item_context(context)
+
+    return formatted_context
+
+
+#### Reviews Retrieval Tool
+
+
+@traceable(name="retrieve_reviews_data", run_type="retriever")
+def retrieve_reviews_data(query, item_list, k=5):
+    query_embedding = get_embedding(query)
+
+    qdrant_client = QdrantClient(url="http://qdrant:6333")
+
+    results = qdrant_client.query_points(
+        collection_name="Amazon-items-collection-01-reviews",
+        prefetch=[
+            Prefetch(
+                query=query_embedding,
+                filter=Filter(must=[FieldCondition(key="parent_asin", match=MatchAny(any=item_list))]),
+                limit=20,
+            )
+        ],
+        query=FusionQuery(fusion="rrf"),
+        limit=k,
+    )
+
+    retrieved_context_ids = []
+    retrieved_context = []
+    similarity_scores = []
+
+    for result in results.points:
+        retrieved_context_ids.append(result.payload["parent_asin"])
+        retrieved_context.append(result.payload["text"])
+        similarity_scores.append(result.score)
+
+    return {
+        "retrieved_context_ids": retrieved_context_ids,
+        "retrieved_context": retrieved_context,
+        "similarity_scores": similarity_scores,
+    }
+
+
+@traceable(name="format_retrieved_reviews_context", run_type="prompt")
+def process_reviews_context(context):
+    formatted_context = ""
+
+    for id, chunk in zip(context["retrieved_context_ids"], context["retrieved_context"]):
+        formatted_context += f"- ID: {id}, review: {chunk}\n"
+
+    return formatted_context
+
+
+def get_formatted_reviews_context(query: str, item_list: list, top_k: int = 5) -> str:
+    """Get the top k reviews matching a query for a list of prefiltered items.
+
+    Args:
+        query: The query to get the top k reviews for
+        item_list: The list of item IDs to prefilter for before running the query
+        top_k: The number of reviews to retrieve, this should be at least 20 if multipple items are prefiltered
+
+    Returns:
+        A string of the top k context chunks with IDs prepending each chunk, each representing a review for a given inventory item for a given query.
+    """
+
+    context = retrieve_reviews_data(query, item_list, top_k)
+    formatted_context = process_reviews_context(context)
 
     return formatted_context

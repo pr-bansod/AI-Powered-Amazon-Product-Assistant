@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add CSS for blinking animation
+# Add CSS for blinking animation and improved styling
 st.markdown(
     """
 <style>
@@ -45,6 +45,49 @@ st.markdown(
 @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.3); opacity: 0.4; }
+}
+
+/* Product card styling */
+.product-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+/* Product count badge */
+.product-count-badge {
+    background-color: #ff8c00;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+/* Welcome message styling */
+.welcome-message {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    border-radius: 10px;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.example-query {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.example-query:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 </style>
 """,
@@ -178,6 +221,22 @@ with st.sidebar:
         else:
             st.info("No suggestions yet")
 
+
+# Show welcome message with example queries (only when no conversation started)
+if len(st.session_state.messages) == 1:
+    st.markdown(
+        """
+        <div class="welcome-message">
+            <h3 style="margin-top: 0;">👋 Welcome to the E-Commerce Assistant!</h3>
+            <p style="margin-bottom: 12px;">I can help you find products and answer questions. Try asking:</p>
+            <div class="example-query">🎧 "Show me the best noise-canceling headphones under $200"</div>
+            <div class="example-query">📱 "What are the top-rated smartphones with good battery life?"</div>
+            <div class="example-query">⌚ "Find me a smartwatch compatible with iOS"</div>
+            <div class="example-query">💻 "Recommend laptops good for programming"</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):

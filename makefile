@@ -2,6 +2,15 @@ run-docker-compose:
 	uv sync
 	docker compose up --build
 
+restart-api: ## Restart API container
+	docker compose restart api
+
+restart-ui: ## Restart Streamlit UI container
+	docker compose restart chatbot_ui
+
+restart-app: ## Restart both API and UI containers
+	docker compose restart api chatbot_ui
+
 clean-notebook-outputs:
 	jupyter nbconvert --clear-output --inplace notebooks/*/*.ipynb
 

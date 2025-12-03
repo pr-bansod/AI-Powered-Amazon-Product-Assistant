@@ -191,6 +191,9 @@ if "messages" not in st.session_state:
 if "used_context" not in st.session_state:
     st.session_state.used_context = []
 
+if "shopping_cart" not in st.session_state:
+    st.session_state.shopping_cart = []
+
 # Initialize feedback states (simplified)
 if "latest_feedback" not in st.session_state:
     st.session_state.latest_feedback = None
@@ -207,7 +210,7 @@ if "trace_id" not in st.session_state:
 
 with st.sidebar:
     # Create tabs in the sidebar
-    (suggestions_tab,) = st.tabs(["🔍 Suggestions"])
+    suggestions_tab, cart_tab = st.tabs(["🔍 Suggestions", "🛒 Shopping Cart"])
 
     # Suggestions Tab
     with suggestions_tab:
@@ -221,6 +224,25 @@ with st.sidebar:
         else:
             st.info("No suggestions yet")
 
+    # Shopping Cart Tab
+    with cart_tab:
+        if st.session_state.shopping_cart:
+            total_price = 0
+            for idx, item in enumerate(st.session_state.shopping_cart):
+                if "product_image_url" in item and item["product_image_url"]:
+                    st.image(item["product_image_url"], width=250)
+                st.caption(f"Quantity: {item.get('quantity', 0)}")
+                st.caption(f"Price: {item.get('price', 0)} {item.get('currency', 'USD')}")
+                st.caption(f"Total: {item.get('total_price', 0)} {item.get('currency', 'USD')}")
+                if item["total_price"] : 
+                    total_price += float(item.get('total_price', 0))
+                    st.divider()
+                else:
+                    continue    
+            st.markdown(f"**Cart Total: {total_price:.2f} USD**")
+        else:
+            st.info("Your shopping cart is empty")
+
 
 # Show welcome message with example queries (only when no conversation started)
 if len(st.session_state.messages) == 1:
@@ -231,8 +253,8 @@ if len(st.session_state.messages) == 1:
             <p style="margin-bottom: 12px;">I can help you find products and answer questions. Try asking:</p>
             <div class="example-query">🎧 "Show me the best noise-canceling headphones under $200"</div>
             <div class="example-query">📱 "What are the top-rated smartphones with good battery life?"</div>
-            <div class="example-query">⌚ "Find me a smartwatch compatible with iOS"</div>
-            <div class="example-query">💻 "Recommend laptops good for programming"</div>
+            <div class="example-query">⌚ "can you give me a smartwatch compatible with iOS. Also give me good and bad reviews for each item."</div>
+            <div class="example-query">💻 "can you give me a smartwatch compatible with iOS. Also give me good and bad reviews for each item. Add the most durable product to the cart"</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -330,6 +352,10 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
             stream=True,
             headers={"Accept": "text/event-stream"},
         ):
+            # Skip empty lines or non-bytes responses
+            if not line or not isinstance(line, bytes):
+                continue
+
             line_text = line.decode("utf-8")
 
             if line_text.startswith("data: "):
@@ -342,8 +368,10 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
                         answer = output["data"]["answer"]
                         used_context = output["data"]["used_context"]
                         trace_id = output["data"]["trace_id"]
+                        shopping_cart = output["data"].get("shopping_cart", [])
 
                         st.session_state.used_context = used_context
+                        st.session_state.shopping_cart = shopping_cart
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                         st.session_state.trace_id = trace_id
 

@@ -28,21 +28,12 @@ def retrieve_reviews_data(query: str, item_list: List[str], k: int = 5) -> Dict[
         prefetch=[
             Prefetch(
                 query=query_embedding,
-                filter=Filter(
-                    must=[
-                        FieldCondition(
-                            key="parent_asin",
-                            match=MatchAny(
-                                any=item_list
-                            )
-                        )
-                    ]
-                ),
-                limit=20
+                filter=Filter(must=[FieldCondition(key="parent_asin", match=MatchAny(any=item_list))]),
+                limit=20,
             )
         ],
         query=FusionQuery(fusion="rrf"),
-        limit=k
+        limit=k,
     )
 
     retrieved_context_ids = []
@@ -61,10 +52,7 @@ def retrieve_reviews_data(query: str, item_list: List[str], k: int = 5) -> Dict[
     }
 
 
-@traceable(
-    name="format_retrieved_reviews_context",
-    run_type="prompt"
-)
+@traceable(name="format_retrieved_reviews_context", run_type="prompt")
 def process_reviews_context(context: Dict[str, List]) -> str:
     """Format retrieved review context into readable string format."""
     formatted_context = ""

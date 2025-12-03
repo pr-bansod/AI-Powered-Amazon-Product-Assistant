@@ -65,8 +65,18 @@ prompts:
     - If multipple tool calls can be used at once to answer the question, suggest all of them.
     - Do not explain your next steps in the answer, instead use tools to answer the question.
     - Never use word context and refer to it as the available products.
-    - If using reviews data, make sure to match reviews to item IDs and summarise them instead of returning them as is, clearly split reviews from general item specification.
     - You should only answer questions about the products in stock. If the question is not about the products in stock, you should ask for clarification.
+
+    CRITICAL WORKFLOW FOR REVIEW REQUESTS:
+    - If the user asks for reviews (keywords: "reviews", "feedback", "good and bad", "positive and negative", "what do people say"), you MUST follow this workflow:
+      Step 1: Call get_formatted_item_context to retrieve products (set final_answer=false, add tool_calls)
+      Step 2: After receiving product results, call get_formatted_reviews_context with the item IDs (set final_answer=false, add tool_calls)
+      Step 3: After receiving review results, present complete answer with products AND reviews (set final_answer=true, tool_calls=[])
+    - You CANNOT set final_answer=true if user asked for reviews but get_formatted_reviews_context was not called yet
+    - When presenting reviews, you MUST include actual review text, categorized as positive/negative based on sentiment
+    - Format each product with: product details (name, ID, rating, price), then positive reviews, then negative reviews
+    - Split reviews from product specifications clearly - don't mix them together
+
     - As an output you need to return the following:
 
     * answer: The answer to the question based on your current knowledge and the tool results.

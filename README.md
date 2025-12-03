@@ -1,4 +1,5 @@
-# AI-Powered Amazon Product Assistant
+# Agentic Product Search
+
 
 An intelligent conversational assistant that helps users discover, explore, and manage Amazon Electronics products through natural language queries. Built with advanced RAG (Retrieval-Augmented Generation) architecture and multi-agent systems, this application combines semantic search with large language models to provide accurate, context-aware product recommendations and shopping cart management.
 

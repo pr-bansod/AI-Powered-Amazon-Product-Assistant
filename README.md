@@ -1,7 +1,6 @@
 # Agentic Product Search
 
-
-An intelligent conversational assistant that helps users discover, explore, and manage Amazon Electronics products through natural language queries. Built with advanced RAG (Retrieval-Augmented Generation) architecture and multi-agent systems, this application combines semantic search with large language models to provide accurate, context-aware product recommendations and shopping cart management.
+An intelligent multi-agent conversational system for product discovery and e-commerce assistance, built with advanced RAG (Retrieval-Augmented Generation) and LangGraph orchestration. The system features coordinator-based agent routing, hybrid search (semantic + keyword), structured outputs, and shopping cart management—all demonstrated on the Amazon Electronics dataset.
 
 > **📍 Current Status**: **Phase 6 Complete** - Multi-agent system with shopping cart functionality, coordinator agent orchestration, and comprehensive testing infrastructure.
 >
@@ -12,7 +11,7 @@ An intelligent conversational assistant that helps users discover, explore, and 
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd amazon-product-assistant
+cd agentic-product-search
 
 # Set up environment variables
 cp .env.example .env  # Add your API keys
@@ -173,7 +172,7 @@ flowchart TD
 **1. Clone the repository**
 ```bash
 git clone <repository-url>
-cd amazon-product-assistant
+cd agentic-product-search
 ```
 
 **2. Set up environment variables**
@@ -186,7 +185,7 @@ OPENAI_API_KEY=sk-...
 
 # Optional but recommended
 LANGSMITH_API_KEY=...
-LANGSMITH_PROJECT=amazon-product-assistant
+LANGSMITH_PROJECT=agentic-product-search
 GROQ_API_KEY=gsk_...
 GOOGLE_API_KEY=...
 
@@ -432,7 +431,7 @@ sequenceDiagram
 ## 🗂️ Project Structure
 
 ```
-amazon-product-assistant/
+agentic-product-search/
 ├── src/
 │   ├── api/                         # FastAPI backend
 │   │   ├── api/

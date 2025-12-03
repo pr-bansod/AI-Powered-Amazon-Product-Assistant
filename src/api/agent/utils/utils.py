@@ -1,8 +1,11 @@
 import ast
 import inspect
+import logging
 from typing import Any, Dict
 
 from langchain_core.messages import AIMessage
+
+logger = logging.getLogger(__name__)
 
 #### FORMAT AI MESSAGE ####
 
@@ -11,7 +14,16 @@ def format_ai_message(response):
     if response.tool_calls:
         tool_calls = []
         for i, tc in enumerate(response.tool_calls):
-            tool_calls.append({"id": f"call_{i}", "name": tc.name, "args": tc.arguments})
+            # Sanitize tool name to only contain alphanumeric, underscores, and hyphens
+            # OpenAI requires tool names to match pattern ^[a-zA-Z0-9_-]+$
+            sanitized_name = ''.join(c for c in tc.name if c.isalnum() or c in '_-')
+            if not sanitized_name:
+                sanitized_name = tc.name  # Fallback to original if completely filtered
+
+            if sanitized_name != tc.name:
+                logger.warning(f"Tool name sanitized: '{tc.name}' -> '{sanitized_name}'")
+
+            tool_calls.append({"id": f"call_{i}", "name": sanitized_name, "args": tc.arguments})
 
         ai_message = AIMessage(content=response.answer, tool_calls=tool_calls)
     else:

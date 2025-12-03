@@ -3,6 +3,8 @@
 An intelligent conversational assistant that helps users discover, explore, and manage Amazon Electronics products through natural language queries. Built with advanced RAG (Retrieval-Augmented Generation) architecture and multi-agent systems, this application combines semantic search with large language models to provide accurate, context-aware product recommendations and shopping cart management.
 
 > **📍 Current Status**: **Phase 6 Complete** - Multi-agent system with shopping cart functionality, coordinator agent orchestration, and comprehensive testing infrastructure.
+>
+> **📊 Note**: This README contains Mermaid diagrams that render automatically on GitHub. If you're viewing this locally, use a Markdown viewer with Mermaid support (VS Code with Mermaid extension, GitHub web interface, or Obsidian).
 
 ## 🚀 Quick Start
 
@@ -52,34 +54,58 @@ The system follows a microservices architecture with containerized components or
 
 ### System Overview
 
+```mermaid
+flowchart TD
+    User[User] --> UI[Streamlit UI\n(port 8501)]
+    UI -->|HTTP/SSE| API[FastAPI Backend\n(port 8000)]
+
+    API --> COORD[Multi-Agent System\n(LangGraph)]
+    COORD --> COORD_QA[Product QA Agent]
+    COORD --> COORD_CART[Shopping Cart Agent]
+
+    API --> Qdrant[Qdrant Vector DB\n(semantic + BM25)]
+    API --> PG[PostgreSQL\n(state + cart)]
+    API --> OpenAI[OpenAI APIs]
+    API --> LangSmith[LangSmith\ntracing]
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                          │
-│                    Streamlit UI (Port 8501)                     │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ HTTP/SSE
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      FastAPI Backend (Port 8000)                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Multi-Agent System (LangGraph)               │  │
-│  │  ┌──────────────┐      ┌──────────────┐                 │  │
-│  │  │ Coordinator  │ ────▶ │  QA Agent    │                 │  │
-│  │  │   Agent      │      │              │                 │  │
-│  │  │              │ ────▶ │ Shopping Cart│                 │  │
-│  │  │              │      │    Agent     │                 │  │
-│  │  └──────────────┘      └──────────────┘                 │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────┬──────────────┬──────────────┬──────────────┬─────────────┘
-      │              │              │              │
-      │              │              │              │
-      ▼              ▼              ▼              ▼
-┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│  Qdrant  │  │PostgreSQL│  │  OpenAI  │  │LangSmith │
-│ Vector DB│  │   State   │  │   APIs   │  │Tracing   │
-│  :6333   │  │   :5433   │  │          │  │          │
-└──────────┘  └──────────┘  └──────────┘  └──────────┘
+
+<details>
+<summary><b>ASCII version (for local viewing without Mermaid support)</b></summary>
+
 ```
+                    User
+                     │
+                     ▼
+            ┌─────────────────┐
+            │ Streamlit UI    │
+            │  (Port 8501)    │
+            └────────┬────────┘
+                     │ HTTP/SSE
+                     ▼
+            ┌─────────────────┐
+            │ FastAPI Backend │
+            │  (Port 8000)    │
+            └────────┬────────┘
+                     │
+         ┌───────────┼───────────┐
+         │           │           │
+         ▼           ▼           ▼
+    ┌─────────┐ ┌─────────┐ ┌─────────┐
+    │Multi-   │ │Qdrant   │ │PostgreSQL│
+    │Agent    │ │Vector DB│ │  State   │
+    │System   │ │         │ │          │
+    └────┬────┘ └─────────┘ └─────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌────────┐ ┌──────────────┐
+│Product │ │Shopping Cart │
+│QA Agent│ │Agent         │
+└────────┘ └──────────────┘
+```
+
+</details>
 
 ### Component Details
 
@@ -228,7 +254,24 @@ Interactive API documentation available at:
 
 ## 🔄 Multi-Agent Workflow
 
-The system uses a coordinator agent pattern to route requests between specialized agents:
+The system uses a coordinator agent pattern to route requests between specialized agents. This high-level Mermaid diagram shows how responsibilities are split:
+
+```mermaid
+flowchart LR
+    U[User Query] --> C[Coordinator Agent\n(Intent Router)]
+
+    C --> QA[Product QA Agent]
+    C --> CART[Shopping Cart Agent]
+
+    QA --> RAG[RAG Pipeline\n(Embeddings + Qdrant)]
+    CART --> PG[PostgreSQL\nCart + Checkpoints]
+
+    RAG --> C
+    PG --> C
+```
+
+<details>
+<summary><b>ASCII version (for local viewing without Mermaid support)</b></summary>
 
 ```
 User Query
@@ -244,15 +287,25 @@ User Query
     │         │
     ▼         ▼
 ┌────────┐ ┌──────────────┐
-│ QA     │ │ Shopping     │
-│ Agent  │ │ Cart Agent   │
-│        │ │              │
-│ - RAG  │ │ - Add items  │
-│ - Search│ │ - Remove     │
-│        │ │ - Clear      │
-│        │ │ - View cart  │
-└────────┘ └──────────────┘
+│Product │ │Shopping      │
+│QA Agent│ │Cart Agent    │
+└───┬────┘ └──────┬───────┘
+    │             │
+    ▼             ▼
+┌──────────┐  ┌──────────┐
+│RAG       │  │PostgreSQL│
+│Pipeline  │  │Cart +    │
+│          │  │Checkpoints│
+└────┬─────┘  └────┬─────┘
+     │             │
+     └─────┬───────┘
+           │
+           ▼
+    Coordinator Agent
+    (returns final answer)
 ```
+
+</details>
 
 ### Agent Responsibilities
 
@@ -339,7 +392,7 @@ sequenceDiagram
     participant Frontend as Frontend (Streamlit)
     participant Backend as Backend (FastAPI)
     participant Coord as Coordinator Agent
-    participant QA as QA Agent
+    participant QA as Product QA Agent
     participant Cart as Shopping Cart Agent
     participant Qdrant
     participant PG as PostgreSQL

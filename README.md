@@ -56,17 +56,17 @@ The system follows a microservices architecture with containerized components or
 
 ```mermaid
 flowchart TD
-    User[User] --> UI[Streamlit UI\n(port 8501)]
-    UI -->|HTTP/SSE| API[FastAPI Backend\n(port 8000)]
+    User[User] --> UI[Streamlit UI (port 8501)]
+    UI -->|HTTP/SSE| API[FastAPI Backend (port 8000)]
 
-    API --> COORD[Multi-Agent System\n(LangGraph)]
+    API --> COORD[Multi-Agent System (LangGraph)]
     COORD --> COORD_QA[Product QA Agent]
     COORD --> COORD_CART[Shopping Cart Agent]
 
-    API --> Qdrant[Qdrant Vector DB\n(semantic + BM25)]
-    API --> PG[PostgreSQL\n(state + cart)]
+    API --> Qdrant[Qdrant Vector DB (semantic + BM25)]
+    API --> PG[PostgreSQL (state + cart)]
     API --> OpenAI[OpenAI APIs]
-    API --> LangSmith[LangSmith\ntracing]
+    API --> LangSmith[LangSmith tracing]
 ```
 
 <details>
@@ -258,13 +258,13 @@ The system uses a coordinator agent pattern to route requests between specialize
 
 ```mermaid
 flowchart LR
-    U[User Query] --> C[Coordinator Agent\n(Intent Router)]
+    U[User Query] --> C[Coordinator Agent (Intent Router)]
 
     C --> QA[Product QA Agent]
     C --> CART[Shopping Cart Agent]
 
-    QA --> RAG[RAG Pipeline\n(Embeddings + Qdrant)]
-    CART --> PG[PostgreSQL\nCart + Checkpoints]
+    QA --> RAG[RAG Pipeline (Embeddings + Qdrant)]
+    CART --> PG[PostgreSQL (Cart + Checkpoints)]
 
     RAG --> C
     PG --> C
@@ -404,7 +404,7 @@ sequenceDiagram
     Backend->>Coord: Route based on intent
 
     alt Shopping cart intent
-        Coord->>Cart: Handle cart operation\n(add/remove/show/clear)
+        Coord->>Cart: Handle cart operation (add/remove/show/clear)
         Cart->>PG: Read/Write cart + checkpoints
         PG-->>Cart: Cart state
         Cart-->>Coord: Cart-focused response

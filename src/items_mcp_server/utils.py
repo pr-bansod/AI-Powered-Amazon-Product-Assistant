@@ -26,19 +26,8 @@ def retrieve_item_data(query: str, k: int = 5) -> Dict[str, List]:
     results = qdrant_client.query_points(
         collection_name="Amazon-items-collection-01-hybrid-search",
         prefetch=[
-            Prefetch(
-                query=query_embedding,
-                using="text-embedding-3-small",
-                limit=20
-            ),
-            Prefetch(
-                query=Document(
-                    text=query,
-                    model="qdrant/bm25"
-                ),
-                using="bm25",
-                limit=20
-            )
+            Prefetch(query=query_embedding, using="text-embedding-3-small", limit=20),
+            Prefetch(query=Document(text=query, model="qdrant/bm25"), using="bm25", limit=20),
         ],
         query=FusionQuery(fusion="rrf"),
         limit=k,
@@ -67,7 +56,9 @@ def process_item_context(context: Dict[str, List]) -> str:
     """Format retrieved item context into readable string format."""
     formatted_context = ""
 
-    for id, chunk, rating in zip(context["retrieved_context_ids"], context["retrieved_context"], context["retrieved_context_ratings"]):
+    for id, chunk, rating in zip(
+        context["retrieved_context_ids"], context["retrieved_context"], context["retrieved_context_ratings"]
+    ):
         formatted_context += f"- ID: {id}, rating: {rating}, description: {chunk}\n"
 
     return formatted_context
